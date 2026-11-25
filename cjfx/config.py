@@ -13,7 +13,7 @@ import yaml
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "config" / "h001.yaml"
 
-GRID_KEYS = ("zone_base", "liquidity", "stop", "exit", "entry_sessions")
+GRID_KEYS = ("zone_base", "liquidity", "stop", "exit", "entry_sessions", "impulse_atr")
 KNOWN_OPTIONS = {
     "zone_base": {"consecutive_3", "nearest_3"},
     "liquidity": {"h1_swing", "prev_day", "asian_session", "equal_levels"},
@@ -75,21 +75,22 @@ class GridPoint:
     stop: str
     exit: str
     entry_sessions: str
+    impulse_atr: str
 
     @property
     def scan_key(self) -> tuple:
         """Options that change which setups are found (stop/exit only change the trade)."""
-        return (self.zone_base, self.liquidity, self.entry_sessions)
+        return (self.zone_base, self.liquidity, self.entry_sessions, self.impulse_atr)
 
     @property
     def id(self) -> str:
-        return "|".join((self.zone_base, self.liquidity, self.stop, self.exit, self.entry_sessions))
+        return "|".join((self.zone_base, self.liquidity, self.stop, self.exit, self.entry_sessions, self.impulse_atr))
 
 
 def grid_points(cfg: dict) -> Iterator[GridPoint]:
     g = cfg["grid"]
     for combo in itertools.product(*(g[k] for k in GRID_KEYS)):
-        yield GridPoint(*combo)
+        yield GridPoint(*(str(x) for x in combo))
 
 
 def config_hash(cfg: dict) -> str:

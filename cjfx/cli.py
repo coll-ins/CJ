@@ -4,7 +4,7 @@
   python -m cjfx.cli bars
   python -m cjfx.cli grid
   python -m cjfx.cli evaluate
-  python -m cjfx.cli sensitivity --strategy EURUSD:swing_h1:continuation --grid-point "consecutive_3|h1_swing|sweep_wick|fixed_3r|london_ny"
+  python -m cjfx.cli sensitivity --strategy EURUSD:swing_h1:continuation --grid-point "consecutive_3|h1_swing|sweep_wick|fixed_3r|london_ny|2.0"
   python -m cjfx.cli holdout --strategy EURUSD:swing_h1:continuation      # runs once per strategy
 """
 from __future__ import annotations
@@ -143,8 +143,8 @@ def cmd_sensitivity(a, cfg):
     data, results = Path(a.data), Path(a.results)
     pair, ex, stp = a.strategy.split(":")
     a.pairs = [pair]
-    zb, liq, st, exi, ses = a.grid_point.split("|")
-    override = {"zone_base": [zb], "liquidity": [liq], "stop": [st], "exit": [exi], "entry_sessions": [ses]}
+    zb, liq, st, exi, ses, im = a.grid_point.split("|")
+    override = {"zone_base": [zb], "liquidity": [liq], "stop": [st], "exit": [exi], "entry_sessions": [ses], "impulse_atr": [float(im)]}
     wf = cfg["validation"]["walk_forward"]
     lo, hi = pd.Timestamp(wf["start"], tz="UTC"), pd.Timestamp(wf["end"], tz="UTC") + pd.Timedelta(days=1)
     rows = []
@@ -188,7 +188,7 @@ def main(argv=None):
     sub.add_parser("evaluate")
     s = sub.add_parser("sensitivity")
     s.add_argument("--strategy", required=True)
-    s.add_argument("--grid-point", required=True, help='e.g. "consecutive_3|h1_swing|sweep_wick|fixed_3r|london_ny"')
+    s.add_argument("--grid-point", required=True, help='e.g. "consecutive_3|h1_swing|sweep_wick|fixed_3r|london_ny|2.0"')
     h = sub.add_parser("holdout")
     h.add_argument("--strategy", required=True)
     h.add_argument("--force", action="store_true", help="re-run a used holdout (recorded; result no longer counts)")

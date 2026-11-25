@@ -33,27 +33,29 @@ def run_pair(pair: str, bars: dict[str, pd.DataFrame], cfg: dict, news: pd.DataF
     fx = cfg["fixed_for_now"]
     rows, rejects = [], []
     mkts = {d: Market(pair, bars, cfg, d) for d in (1, -1)}
-    zones = {(d, zb): find_zones(mkts[d].tf["H4"], fx, zb) for d in (1, -1) for zb in g["zone_base"]}
-    for (d, zb), zs in zones.items():
-        log(f"  {pair} {'long' if d == 1 else 'short'} {zb}: {len(zs)} H4 zones")
+    imps = [float(x) for x in g.get("impulse_atr", [fx["impulse_atr_h4"]])]
+    zones = {(d, zb, im): find_zones(mkts[d].tf["H4"], {**fx, "impulse_atr_h4": im}, zb)
+             for d in (1, -1) for zb in g["zone_base"] for im in imps}
+    for (d, zb, im), zs in zones.items():
+        log(f"  {pair} {'long' if d == 1 else 'short'} {zb} impulse {im}xATR: {len(zs)} H4 zones")
     lv = {(d, L): levels_mod.compute(mkts[d], cfg, L) for d in (1, -1) for L in g["liquidity"]}
     ctxs = {(d, ex): ExecContext(mkts[d].tf[EXEC_TF[ex]], fx["swing_k"][EXEC_TF[ex].lower()])
             for d in (1, -1) for ex in cfg["strategies"]["execution"]}
     for d in (1, -1):
         mkt = mkts[d]
-        for ex, zb, L, ses in itertools.product(cfg["strategies"]["execution"], g["zone_base"], g["liquidity"], g["entry_sessions"]):
+        for ex, zb, L, ses, im in itertools.product(cfg["strategies"]["execution"], g["zone_base"], g["liquidity"], g["entry_sessions"], imps):
             filt = EntryFilter(cfg, cfg["calendar"]["entry_session_sets"][ses], pair, news)
-            setups = scan(zones[(d, zb)], mkt, lv[(d, L)], ex, ctxs[(d, ex)], filt, cfg)
-            opp = zones[(-d, zb)]
+            setups = scan(zones[(d, zb, im)], mkt, lv[(d, L)], ex, ctxs[(d, ex)], filt, cfg)
+            opp = zones[(-d, zb, im)]
             for st in setups:
                 if st.setup_type is None:
                     rejects.append({"pair": pair, "direction": d, "execution": ex, "zone_base": zb, "liquidity": L,
-                                    "entry_sessions": ses, "entry_time": st.entry_time, "reason": "neutral_bias"})
+                                    "entry_sessions": ses, "impulse_atr": str(im), "entry_time": st.entry_time, "reason": "neutral_bias"})
                     continue
                 for sm, em in itertools.product(g["stop"], g["exit"]):
                     res = simulate(st, sm, em, mkt, ctxs[(d, ex)], opp, cfg)
                     base = {"pair": pair, "direction": d, "execution": ex, "setup_type": st.setup_type,
-                            "zone_base": zb, "liquidity": L, "stop": sm, "exit": em, "entry_sessions": ses}
+                            "zone_base": zb, "liquidity": L, "stop": sm, "exit": em, "entry_sessions": ses, "impulse_atr": str(im)}
                     if isinstance(res, str):
                         rejects.append({**base, "entry_time": st.entry_time, "reason": res})
                         continue
@@ -69,7 +71,7 @@ def run_pair(pair: str, bars: dict[str, pd.DataFrame], cfg: dict, news: pd.DataF
                                  "bias_mn": st.bias_mn, "bias_w": st.bias_w})
     tr = pd.DataFrame(rows)
     if len(tr):
-        tr["config_id"] = tr[["zone_base", "liquidity", "stop", "exit", "entry_sessions"]].agg("|".join, axis=1)
+        tr["config_id"] = tr[["zone_base", "liquidity", "stop", "exit", "entry_sessions", "impulse_atr"]].agg("|".join, axis=1)
         for c in ("entry_time", "exit_time", "first_touch", "sweep_time", "confirm_time"):
             tr[c] = pd.to_datetime(tr[c], utc=True)
     rj = pd.DataFrame(rejects)
@@ -83,6 +85,7 @@ def grid_size(cfg: dict) -> int:
     n = 1
     for k in ("zone_base", "liquidity", "stop", "exit", "entry_sessions"):
         n *= len(g[k])
+    n *= len(g.get("impulse_atr", [None]))
     return n * len(cfg["strategies"]["execution"]) * len(cfg["strategies"]["setup_type"])
 
 
