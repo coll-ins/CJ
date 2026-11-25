@@ -1,0 +1,99 @@
+# Hypothesis 001 configuration, copied from the CJ FX Phase 1 Blueprint v0.2
+# ("Build spec: configuration"). Nothing in the code may hardcode a time,
+# threshold or option listed here. Keys marked "added by build" are settings
+# the blueprint did not name but the code needed; they are guesses too.
+h001:
+  version: 0.2.0
+  calendar:
+    day_boundary: {tz: America/New_York, time: "17:00"}   # D, W, MN candles and previous-day levels
+    h4_anchor: day_boundary          # added by build: H4 candles start at the day boundary (17:00, 21:00, ... NY)
+    sessions:
+      asian:     {start: {tz: America/New_York, time: "17:00"}, end: {tz: Europe/London, time: "08:00"}}
+      london_ny: {start: {tz: Europe/London, time: "08:00"}, end: {tz: America/New_York, time: "17:00"}}
+    entry_session_sets:              # added by build: what each grid option of entry_sessions means
+      london_ny: [london_ny]
+      asian_london_ny: [asian, london_ny]
+    asian_range_session: asian       # added by build: session whose low/high is the "Asian session" liquidity
+  # Each instrument is researched and reported SEPARATELY (never pooled). collins 25 Nov 2026:
+  # EURUSD, gold, Bitcoin, then GBPUSD, USDJPY, NAS100 added.
+  instruments: [EURUSD, XAUUSD, BTCUSD, GBPUSD, USDJPY, NAS100]
+  instrument_meta:                   # added by build
+    # source: histdata (bid-only M1, cloud-reachable), binance (trade prices), dukascopy (bid+ask, blocks cloud IPs)
+    EURUSD: {source: histdata, weekend_trading: false, news_currencies: [EUR, USD]}
+    XAUUSD: {source: histdata, weekend_trading: false, news_currencies: [USD]}
+    BTCUSD: {source: binance,  weekend_trading: true,  news_currencies: [USD]}   # history from 2017-08-17 only
+    GBPUSD: {source: histdata, weekend_trading: false, news_currencies: [GBP, USD]}
+    USDJPY: {source: histdata, weekend_trading: false, news_currencies: [USD, JPY]}
+    NAS100: {source: histdata, weekend_trading: false, news_currencies: [USD]}   # HistData NSXUSD
+  # "pip" = the unit spreads, stops and slippage are quoted in. Gold 0.1 USD, BTC 1 USD, NAS100 1 index point.
+  pip_size: {EURUSD: 0.0001, XAUUSD: 0.1, BTCUSD: 1.0, GBPUSD: 0.0001, USDJPY: 0.01, NAS100: 1.0}   # added by build
+  broker: {name: exness, platform: mt5, account: standard, mode: demo}
+  costs:
+    spread: from_broker_ticks        # Standard account: cost is in the spread, no commission
+    # The data sources are bid-only (HistData) or trade prices (Binance), so the ask is
+    #   bid + spread_floor_pips[instrument]   (a CONSTANT; real widening at news/rollover is not modelled)
+    # until Exness tick files are loaded (data/exness/{INSTRUMENT}.csv), which replace the floor with
+    # the median Exness spread by hour of week.
+    # ESTIMATES: EURUSD 1.0 is the average Standard spread quoted by dailyforex.com (read 2026-11-25).
+    # Every other value is an UNVERIFIED guess: GBPUSD 1.3, USDJPY 1.2 pips; XAUUSD 2.5 = $0.25;
+    # BTCUSD 20 = $20; NAS100 2.0 index points.
+    spread_floor_pips: {EURUSD: 1.0, XAUUSD: 2.5, BTCUSD: 20, GBPUSD: 1.3, USDJPY: 1.2, NAS100: 2.0}   # ESTIMATE
+    commission_per_lot: 0
+    slippage_pips_per_side: {EURUSD: 0.2, XAUUSD: 0.5, BTCUSD: 5, GBPUSD: 0.2, USDJPY: 0.2, NAS100: 0.5}   # guesses
+    swap_pips_per_night: {}          # NOT MODELLED (0) until the Exness swap table is entered; {INSTR: {long: x, short: y}}
+    triple_swap_weekday: 2           # added by build: Wednesday rollover charges 3 nights
+  risk: {per_trade_pct: 0.5}
+  strategies:                         # 6 strategies, never pooled
+    execution: [swing_h1, intraday_m5]
+    setup_type: [continuation, reversal_one, reversal_both]
+  grid:                               # 2 x 4 x 2 x 4 x 2 = 128 per strategy, 768 total
+    zone_base: [consecutive_3, nearest_3]          # consecutive_3 is primary
+    liquidity: [h1_swing, prev_day, asian_session, equal_levels]
+    stop: [sweep_wick, confirmation_swing]
+    exit: [fixed_3r, extended, trailing, partial]
+    entry_sessions: [london_ny, asian_london_ny]
+  fixed_for_now:                      # sensitivity check only, +-25%
+    swing_k: {mn: 2, w: 2, h4: 3, h1: 3, m5: 3}
+    atr_period: 14
+    clear_break_atr: 0.25
+    impulse_atr_h4: 2.0
+    impulse_window_h4_bars: 3
+    zone_expiry_h4_bars: 120
+    zone_max_touches: 2
+    nearest_3_max_lookback_h4_bars: 10   # added by build: how far back "3 nearest" may reach
+    zone_base_candles: 3                 # added by build: the "3" in consecutive_3 / nearest_3
+    sweep_max_above_zone_atr_h4: 0.5
+    close_back_max_h1_bars: 2
+    time_limit_hours: {swing_h1: 48, intraday_m5: 12}   # from first H4 zone touch
+    stop_buffer_atr_h1: 0.1
+    stop_min_atr_h1: 0.5
+    stop_max_atr_h4: 1.5
+    target_r: 3                          # added by build: the 1:3 minimum
+    extended_target_cap_r: 8
+    trail_start_r: 3
+    trail_lock_r: 2
+    partial_fraction: 0.5
+    equal_levels_tol_atr_h1: 0.1
+    equal_levels_lookback_h1_bars: 48
+    news_blackout_minutes: 15
+    intraday_exit: last_m5_bar_before_day_boundary
+    friday_no_entry_after: {tz: America/New_York, time: "16:00"}
+  validation:
+    walk_forward: {start: 2011-01-01, end: 2023-12-31, train_years: 4, test_years: 1}
+    holdout: {start: 2024-01-01, runs_allowed: 1}
+    min_train_trades: 100
+    correction: [romano_wolf, bonferroni_reference, deflated_sharpe, pbo_cscv]
+    alpha: 0.05                          # added by build
+    bootstrap_reps: 1000                 # added by build
+    bootstrap_mean_block_weeks: 4        # added by build
+    pbo_blocks: 16
+    sensitivity_scale: [0.75, 1.25]
+    verdict:                             # added by build, values from the blueprint "Verdict per strategy"
+      min_oos_trades: 200
+      min_t_stat: 2.4
+      min_pairs_positive: 1              # per-instrument verdicts now (never pooled), so 1 of 1
+      min_wf_efficiency: 0.5
+      max_pbo: 0.25
+      min_dsr: 0.95
+      stability_min_share: 0.667         # same option in >= 6 of 9 folds
+      holdout_dd_percentile: 95
