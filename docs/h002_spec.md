@@ -5,7 +5,7 @@
 | v0.1 | 2026-11-25 | review | `docs/h002_review.md` (commit bec0175), 10 open questions |
 | v0.2 | 2026-11-25 | proposed | collins's decisions of 25 Nov applied (commit c438a24) |
 | v0.3 | 2026-11-25 | proposed | H001.1 brief merged in (collins chose: same study as H002); items 1 to 5 of collins's conditional sign-off recorded; BTC spread 2 bp withdrawn, cost source = Exness tick export; swap labelled omitted with break-even and scenario sensitivity |
-| v0.4 | 2026-11-26 | **FINAL DRAFT for sign-off, not frozen** | collins's 8 clarifications on A-1 to A-23 applied: unscorable events on data gaps, labels on estimates, spread units and conversions frozen, slippage sensitivity, NSXUSD proxy, no duplicate filter tests; family count check (section 4.3) |
+| v0.4 | 2026-11-26 | **FINAL DRAFT for sign-off, not frozen** | (+ collins's confirmation of A-1 to A-23 and research principles, section 10; undefined details I-1 to I-3, section 11) | collins's 8 clarifications on A-1 to A-23 applied: unscorable events on data gaps, labels on estimates, spread units and conversions frozen, slippage sensitivity, NSXUSD proxy, no duplicate filter tests; family count check (section 4.3) |
 
 H002 is not coded and not run. It is frozen only when collins approves this file and
 `config/h002.yaml`; the approving commit hash is then written here and in the config. Any later
@@ -485,3 +485,25 @@ All rows are approved. Nothing in this table is a measured fact; every row is an
 | A-21 | (**approved with clarification**: filtered variants only where eligibility can change; no PWH/PWL duplicate; see family table 4.3) The H001.1 brief says bullish signals "qualify in discount" (a requirement); H002 tests with and without the filter | keep both; the filtered cell answers the brief, the unfiltered one shows whether the filter adds anything |
 | A-22 | The H001.1 brief keeps "price approaches a mapped level" | not used: no definition exists, any trade beyond the level counts (approved in v0.2) |
 | A-23 | Descriptive bucket edges and regime definitions (4.7) | as written, fixed before any run |
+
+## 10. Research principles (collins, 26 Nov 2026, binding on every H002 run and report)
+
+1. Approved assumptions are not changed because another version produces better results.
+2. Every statement is labelled [E] measured evidence, [H] hypothesis, [U] unverified
+   assumption, [B] backtest result or [F] forward-demo result.
+3. The six instruments are never pooled to manufacture a stronger result.
+4. Promising descriptive buckets never become entry filters inside H002.
+5. H002 is allowed to fail; a negative result is reported as fully as a positive one.
+6. H001 stays frozen as the benchmark.
+7. No live deployment on historical backtest profitability alone.
+8. No historical run and no forward-demo recording before collins's freeze approval.
+
+## 11. Implementation details still undefined (choices for collins, NOT decided)
+
+| # | Detail | Option A | Option B | Consequence |
+|---|---|---|---|---|
+| I-1 | "Normal trading hours" for the gap rule (A-1) | Derived from the data: a minute-of-week counts as normal if the instrument has a bar there in at least 50% of weeks in that year | Fixed broker schedule typed in by hand per instrument | A adapts to HistData's actual session coverage but uses the data to define itself; B needs a schedule we don't have verified for 2011 to 2026 and would mark many quiet-hour minutes as gaps |
+| I-2 | Which spread goes into the stop buffer once spread varies by hour of week | Spread at the reclaim candle's hour | Spread at the entry bar's hour | Almost always the same hour; differs only when the reclaim closes on the hour boundary. Effect on R is tiny |
+| I-3 | BTC "positive in 5 of 7 years" when 2017 is a partial year (from 17 Aug) | Count 2017 as a year | Count 2018 to 2023 only (6 years, require 4 of 6) | A lets 4.5 months count as a full year; B is cleaner but a weaker test |
+
+Recommendation: A, A, B. None of these is applied until collins picks.
