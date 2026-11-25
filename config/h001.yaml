@@ -79,8 +79,11 @@ h001:
     intraday_exit: last_m5_bar_before_day_boundary
     friday_no_entry_after: {tz: America/New_York, time: "16:00"}
   validation:
-    walk_forward: {start: 2011-01-01, end: 2023-12-31, train_years: 4, test_years: 1}
-    holdout: {start: 2024-01-01, runs_allowed: 1}
+    # collins 25 Nov 2026: "make the test up to this date". Walk-forward now runs to the end of the
+    # data, so 2024-2026 is used for testing and NO untouched holdout remains (blueprint once-only rule
+    # waived by collins). Any future holdout must be data after 2026-11-25 (paper/demo forward test).
+    walk_forward: {start: 2011-01-01, end: 2026-11-25, train_years: 4, test_years: 1}
+    holdout: {start: 2026-11-26, runs_allowed: 1}
     min_train_trades: 100
     correction: [romano_wolf, bonferroni_reference, deflated_sharpe, pbo_cscv]
     alpha: 0.05                          # added by build
