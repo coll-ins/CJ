@@ -228,7 +228,7 @@ def test_23_weekly_flat_exit():
 def test_25_min_stop_skip():
     m1 = _m1([[1.1000, 1.1001, 1.0999, 1.1000]] * 3)
     sig = {"side": "low", "reclaim_close_t": ns("2024-01-09 10:00"), "extreme": 1.09995, "atr": 0.00001, "close": 1.1}
-    p = plan_trade(sig, m1, np.full(3, 0.0001), lambda t, b: np.full(len(t), 0.0001), FX)
+    p = plan_trade(sig, m1, np.full(3, 0.0001), lambda t, b: (np.full(len(t), 0.0001), np.zeros(len(t), bool)), FX)
     assert p["skip"] == "stop_too_small"
 
 

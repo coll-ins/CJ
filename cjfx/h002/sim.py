@@ -29,7 +29,7 @@ def rollovers(a: int, b: int, weekend_trading: bool) -> int:
 
 
 def plan_trade(sig: dict, m1: Bars, spr_m1: np.ndarray, spread_at, inst: Instrument,
-               buffer_atr: float = BUFFER_ATR, slip_mult: float = 1.0) -> dict:
+               buffer_atr: float = BUFFER_ATR, slip_mult: float = 1.0, enforce_min_stop: bool = True) -> dict:
     """Entry, stop, target for a reclaim signal, or a skip reason. spread_at(ns, bid) -> spread."""
     long = sig["side"] == "low"
     te = sig["reclaim_close_t"]
@@ -41,7 +41,7 @@ def plan_trade(sig: dict, m1: Bars, spr_m1: np.ndarray, spread_at, inst: Instrum
         return {"skip": "weekend_window"}
     bid_o = m1.o[e]
     slip = inst.slip(bid_o) * slip_mult
-    spr_reclaim = float(spread_at(np.array([te - NS_MIN]), np.array([sig["close"]]))[0])
+    spr_reclaim = float(np.asarray(spread_at(np.array([te - NS_MIN]), np.array([sig["close"]]))[0]).ravel()[0])
     spr_e = spr_m1[e]
     buf = buffer_atr * sig["atr"]
     if not np.isfinite(buf):
@@ -57,7 +57,7 @@ def plan_trade(sig: dict, m1: Bars, spr_m1: np.ndarray, spread_at, inst: Instrum
     rt_cost = spr_reclaim + 2 * slip
     if R <= 0:
         return {"skip": "entry_beyond_stop", "e": e, "t_entry": t_entry}
-    if R < MIN_STOP_COST_MULT * rt_cost:
+    if enforce_min_stop and R < MIN_STOP_COST_MULT * rt_cost:
         return {"skip": "stop_too_small", "e": e, "t_entry": t_entry, "entry": entry, "stop": stop, "R": R}
     target = entry + TARGET_R * R if long else entry - TARGET_R * R
     # entry bar already beyond target (gap) -> skip (v0.6 M-4)
@@ -131,7 +131,7 @@ def simulate_cell(signals: list[dict], m1: Bars, spr_m1: np.ndarray, spread_at, 
             row["status"] = "signalled_not_executed"
             rows.append(row)
             continue
-        p = plan_trade(s, m1, spr_m1, spread_at, inst, buffer_atr, slip_mult)
+        p = plan_trade(s, m1, spr_m1, spread_at, inst, buffer_atr, slip_mult, enforce_min_stop=fixed_list is None)
         if "skip" in p:
             row["status"] = p["skip"]
             if p["skip"] == "stop_too_small":
