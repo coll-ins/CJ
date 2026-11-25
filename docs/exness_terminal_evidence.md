@@ -28,7 +28,10 @@ On **MT5** (desktop or mobile):
 If the offset is not 0 or W1 opens on Sunday, the forward-demo logger computes levels from UTC
 timestamps itself and never reads MT5's W1 bars.
 
-## B. Spread history (tick export) — PENDING. Needs MT5 desktop, not the phone app.
+## B. Spread history — LARGELY REPLACED by the public Exness tick archive (see docs/exness_data_access.md)
+
+Still needed from collins: confirm the symbol names on the demo account (EURUSDm style = Standard?).
+The MT5 export below is only needed if collins wants a cross-check.
 
 For each of EURUSD, GBPUSD, USDJPY, XAUUSD, BTCUSD, the NAS100 symbol (Exness: USTEC):
 View > Symbols > Ticks tab > choose symbol > date range = last 3 months > Request > Export.
