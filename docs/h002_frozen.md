@@ -25,3 +25,14 @@ that needs a rule change goes to collins as v0.6, never silently.
 
 Not needed for the historical run: swap screenshots (S3 optional), server-time check (forward
 demo only).
+
+## v0.6 re-freeze (supersedes the v0.5 freeze above)
+
+Approved by collins on 2026-11-25 23:13 UTC (decision card: "Approve all as proposed").
+Frozen content = commit `4c9b460`. The independent review (section 4.9) is now done; its fixes
+are spec section 12.
+
+```
+a2e98c2a67bec1e9d8615a0487ca0356e5f56ded679fa7cfd9c45ad4542dcfc8  docs/h002_spec.md
+98b3947baefafcb3289284c9fa01c14339cac2cde2d3e36cc84c9e69f963ed83  config/h002.yaml
+```
