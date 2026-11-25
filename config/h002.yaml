@@ -1,9 +1,9 @@
-# H002 config — PROPOSED, NOT FROZEN (spec v0.3, docs/h002_spec.md)
+# H002 config — FINAL DRAFT, NOT FROZEN (spec v0.4, docs/h002_spec.md)
 # Frozen only after collins approves; the approving commit hash goes in `frozen_at`.
 # No grid: every value is single. Sensitivity values are reported, never selected.
 hypothesis: H002
-spec_version: "0.3"
-status: proposed
+spec_version: "0.4"
+status: final_draft
 frozen_at: null
 
 instruments: [EURUSD, XAUUSD, BTCUSD, GBPUSD, USDJPY, NAS100]   # never pooled
@@ -11,6 +11,10 @@ pip_size: {EURUSD: 0.0001, XAUUSD: 0.1, BTCUSD: 1.0, GBPUSD: 0.0001, USDJPY: 0.0
 
 data:
   histdata_tz_offset_hours: -5        # fixed EST, no DST; UTC = EST + 5h
+  gap_min_consecutive_missing_m1: 5   # inside normal trading hours; overlapping sweep..exit -> event unscorable
+  gap_strict_sensitivity: 1           # rerun with any missing minute = gap
+  no_path_inference: true
+  nas100_source: histdata_NSXUSD      # proxy, NOT identical to Exness US100/USTEC (A-18)
   btc_start: 2017-08-17
 time:
   timezone: UTC
@@ -71,26 +75,35 @@ costs:
     primary_source: exness_tick_export # PENDING: docs/exness_terminal_evidence.md step B
     export_file_sha256: null           # recorded before the first run
     aggregation: median_by_hour_of_week
-    unit: {EURUSD: pips, GBPUSD: pips, USDJPY: pips, XAUUSD: tbd, BTCUSD: tbd, NAS100: tbd}  # bp or fixed, from export regression
+    unit: {EURUSD: pips, GBPUSD: pips, USDJPY: pips, XAUUSD: tbd, BTCUSD: tbd, NAS100: tbd}  # frozen before first run
+    unit_rule: {slope_abs_t_min: 3.0, min_price_range_frac: 0.10, default_if_untestable: bp}
+    unit_regression_output: null       # written with export hash before first run
+    limitation: "3-month export = initial profile only; not historical 2011-2026 spreads" 
     fallback_floor: {EURUSD: 1.0, XAUUSD: 2.5, BTCUSD: 20, GBPUSD: 1.3, USDJPY: 1.2, NAS100: 2.0}  # pips; labelled "unverified cost model"
-    sensitivity_multiples: [0.5, 1.0, 1.5, 2.0]
+    sensitivity_multiples: [0.5, 1.0, 1.5, 2.0, 3.0]
     btc_sensitivity: [{usd: 20}, {bp: 2}, {bp: 5}, {bp: 10}]
     pass_bar_multiple: 1.5
     report_break_even: true
-  slippage_per_side: {EURUSD: 0.2, XAUUSD: 0.5, BTCUSD: 5, GBPUSD: 0.2, USDJPY: 0.2, NAS100: 0.5}  # pips, guesses
+  slippage_per_side: {EURUSD: 0.2, XAUUSD: 0.5, BTCUSD: 5, GBPUSD: 0.2, USDJPY: 0.2, NAS100: 0.5}  # pips; ESTIMATES, same as H001
+  slippage_sensitivity_multiples: [2.0, 4.0]
+  combined_worst_case: {spread_multiple: 2.0, slippage_multiple: 2.0}
+  slippage_report_break_even: true
   swap:
     primary: omitted                   # NOT zero-assumed; every table labelled "swap omitted"
     rollover_utc: "22:00"
     triple_weekday: wednesday
     btc_daily_incl_weekends: true
     report_break_even: true
-    scenario_s1_adverse_annual_rate: {EURUSD: 0.03, GBPUSD: 0.03, USDJPY: 0.03, XAUUSD: 0.05, NAS100: 0.07, BTCUSD: 0.20}  # illustrative, both directions
+    scenario_s1_adverse_annual_rate:  # ILLUSTRATIVE, never presented as actual swap
+      {EURUSD: 0.03, GBPUSD: 0.03, USDJPY: 0.03, XAUUSD: 0.05, NAS100: 0.07, BTCUSD: 0.20}  # illustrative, both directions
     scenario_s2_multiple_of_s1: 2.0
     scenario_s3_exness_spec: pending   # step C
     pass_bar_scenario: s1
 
 stats:
-  primary_family_size: 54              # 9 cells x 6 instruments; 90 if PMH/PML were included
+  primary_family_size: 54              # PW unfiltered 3TF x6 = 18; EQ unfiltered+aligned 3TF x6 = 36; 90 if PMH/PML were included
+  no_pw_aligned_cell: true             # filter redundant for PWH/PWL (A-21)
+  identical_aligned_set_rule: share_result_family_stays_54
   bonferroni_t: 3.31                   # 3.45 for 90
   method: romano_wolf
   familywise_alpha: 0.05

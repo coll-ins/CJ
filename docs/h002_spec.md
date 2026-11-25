@@ -4,11 +4,12 @@
 |---|---|---|---|
 | v0.1 | 2026-11-25 | review | `docs/h002_review.md` (commit bec0175), 10 open questions |
 | v0.2 | 2026-11-25 | proposed | collins's decisions of 25 Nov applied (commit c438a24) |
-| v0.3 | 2026-11-25 | **PROPOSED, not frozen** | H001.1 brief merged in (collins chose: same study as H002); items 1 to 5 of collins's conditional sign-off recorded; BTC spread 2 bp withdrawn, cost source = Exness tick export; swap labelled omitted with break-even and scenario sensitivity |
+| v0.3 | 2026-11-25 | proposed | H001.1 brief merged in (collins chose: same study as H002); items 1 to 5 of collins's conditional sign-off recorded; BTC spread 2 bp withdrawn, cost source = Exness tick export; swap labelled omitted with break-even and scenario sensitivity |
+| v0.4 | 2026-11-26 | **FINAL DRAFT for sign-off, not frozen** | collins's 8 clarifications on A-1 to A-23 applied: unscorable events on data gaps, labels on estimates, spread units and conversions frozen, slippage sensitivity, NSXUSD proxy, no duplicate filter tests; family count check (section 4.3) |
 
 H002 is not coded and not run. It is frozen only when collins approves this file and
 `config/h002.yaml`; the approving commit hash is then written here and in the config. Any later
-rule change creates v0.3+ and restarts any forward record.
+rule change creates a new version (v0.5+) and restarts any forward record.
 
 Related: H001 frozen at commit `897b2d5` (code, config and reports untouched). The old
 M5 breakout-fade file is now `docs/h003_candidate_m5_breakout_fade.md` (renamed in `d62f48b`,
@@ -19,7 +20,7 @@ collins chose to treat them as one. Its additions are in sections 4.7 to 4.9. H0
 benchmark (`docs/h001_frozen.md`, commit cb7c990 on `claude/project-thread-mqtukq`).
 
 Items marked **[A-n]** are assumptions not covered by collins's decisions. They are listed in
-section 9 and need approval like everything else.
+section 9; all were approved on 26 Nov (eight with clarifications).
 
 ## 1. Data and time
 
@@ -29,8 +30,17 @@ section 9 and need approval like everything else.
 * Every timestamp in H002 is UTC. A bar is labelled by its open time and is usable only after
   its close.
 * Confirmation candles M5, M15, H1 are built from M1 on UTC clock boundaries
-  (M15 at :00/:15/:30/:45, H1 on the hour). An incomplete bar (missing M1 inside) is still
-  built from the minutes that exist **[A-1]**.
+  (M15 at :00/:15/:30/:45, H1 on the hour).
+* **Data gaps [A-1, approved with clarification].** A gap is any run of **5 or more consecutive
+  missing M1 bars** inside the instrument's normal trading hours (scheduled weekend closure and
+  the daily maintenance break excluded). If a gap overlaps any part of an event's sequence,
+  from the sweep candle's open through the trade's exit (or through the end of the reclaim
+  window for a non-traded setup), the event is **unscorable**: logged with reason
+  `data_gap`, never simulated, never counted as a win or loss. No price path is inferred or
+  filled. Shorter runs (1 to 4 missing minutes) are treated as no trades printed; a
+  sensitivity rerun with the strict rule (any missing minute = gap) is reported.
+* A week or month whose own M1 data has a gap is flagged `levels_degraded`; its PWH/PWL
+  (PMH/PML) are still used but results are also reported with those weeks excluded.
 * **Week** = Monday 00:00 UTC to the next Monday 00:00 UTC. **Month** = UTC calendar month.
 * PWH/PWL = high/low of all M1 bars in the previous completed week. Usable from the current
   week's Monday 00:00 UTC. PMH/PML likewise, usable from the 1st of the month 00:00 UTC.
@@ -90,8 +100,8 @@ Written for a high level L (bearish setup). Lows are the mirror image. All price
 
 Rationale: about 1% of a typical day's range, so a 0.1 pip print on the bid feed does not count
 as a sweep. The daily-range figures are my approximations, **not measured on the data [A-6]**.
-The thresholds are frozen as written whatever a later measurement shows; measuring first and
-then setting them would be the retrospective adjustment collins ruled out.
+**Label: estimated design choices, not empirically optimised values.** They are frozen as
+written whatever a later measurement shows; no retrospective tuning.
 
 ### 3.2 State machine per level and confirmation TF
 For each completed confirmation candle c (high_c, close_c) while the level is active:
@@ -111,6 +121,9 @@ For each completed confirmation candle c (high_c, close_c) while the level is ac
 Window in candles: M5 = 12 (sweep candle + 11), M15 = 4, H1 = 1. **On H1 the window is the
 sweep candle itself**, so H1 confirmation only ever trades same-candle sweep-reclaims. That is
 what "60 minutes" implies; flagging it because it makes H1 a different animal from M5.
+**Approved (26 Nov) as a separate experiment: H1 confirmation = same-candle sweep-and-reclaim
+only. It cannot capture a reclaim on a later H1 candle under the 60-minute rule**, so an H1
+result says nothing about slower reclaims.
 
 A close exactly at L is not a reclaim. A level whose first trade beyond it is a weekly-open
 gap still follows the same rules; gap sweeps are tagged for a separate breakdown.
@@ -166,6 +179,29 @@ hours or about 2011 to 2023, when gold traded at $1,050 to $2,000.
    recorded in the config with the export file hash **before** any H002 result exists.
 4. Until the export exists, the H001 floors are the fallback and every result is labelled
    "unverified cost model".
+5. **Limitation, stated in every report:** a 3-month export from late 2026 is an *initial
+   spread profile* only. It does not establish what Exness (or anyone) charged in 2011 to 2026.
+   Retail spreads were generally wider in the early 2010s, so the profile likely
+   **understates** historical costs. That is why the sensitivity below goes to 3x.
+
+**Spread units and conversion (frozen before the first run).** Prices are bid. Ask = bid +
+spread in price units. One pip/point = `pip_size`.
+
+| Instrument | pip_size | Unit stored | Conversion to price | Example |
+|---|---|---|---|---|
+| EURUSD | 0.0001 | pips | spread_pips × 0.0001 | 1.0 pip = 0.00010 |
+| GBPUSD | 0.0001 | pips | spread_pips × 0.0001 | 1.3 pip = 0.00013 |
+| USDJPY | 0.01 | pips | spread_pips × 0.01 | 1.2 pip = 0.012 |
+| XAUUSD | 0.1 | **decided from export**: bp or USD | bp × price / 10,000, or USD as is | 0.62 bp at $3,575 = $0.221 |
+| BTCUSD | 1.0 | **decided from export**: bp or USD | bp × price / 10,000, or USD as is | 2 bp at $90,000 = $18 |
+| NAS100 | 1.0 | **decided from export**: bp or points | bp × price / 10,000, or points as is | 1.5 bp at 20,000 = 3.0 pts |
+
+Unit rule for the three "decided" rows, fixed now: regress spread on mid price over the
+export. If the price slope is significant (|t| > 3) and the export's price range is at least
+10% wide, use bp; otherwise use fixed USD/points. If the export's price range is under 10% (the
+test cannot tell), use bp, because fixed USD across a 4x to 30x price history is the less
+plausible model. The chosen unit, the regression output and the export's SHA-256 are written
+into `config/h002.yaml` and committed **before** the first run.
 
 **BTC specifically.** The v0.2 proposal of 2 bp is **withdrawn**: it had no observation
 behind it. The reasoning that remains is structural: at a constant $20, BTC's cost was 50 bp
@@ -174,19 +210,23 @@ nothing but the price level. A broker spread that stayed fixed in USD across tha
 implausible, but that is an argument, not evidence. The unit and value come from step 2.
 
 **Spread sensitivity (all reported, none selected).** Every primary cell is rerun at 0.5x,
-1x, 1.5x and 2x the primary spread. For BTC also: flat $20 (H001 value), 2 bp, 5 bp and
+1x, 1.5x, 2x and 3x the primary spread. For BTC also: flat $20 (H001 value), 2 bp, 5 bp and
 10 bp. For each cell the report gives the **break-even spread** (the spread at which net
 expectancy hits zero), so anyone can compare it against what they see on the terminal.
 The pass bar (section 7, point 5) uses 1.5x, fixed in advance.
 
-**Slippage per side**: EURUSD/GBPUSD/USDJPY 0.2 pip, XAUUSD $0.05, BTCUSD $5, NAS100 0.5 pt
-(guesses as in H001; forward demo records actual slippage).
+**Slippage per side [A-14]**: EURUSD/GBPUSD/USDJPY 0.2 pip, XAUUSD $0.05, BTCUSD $5, NAS100
+0.5 pt. **Label: estimates**, kept identical to H001 for the primary comparison. Conservative
+sensitivity: 2x and 4x these values on entries and stop/time exits (targets stay limit fills),
+plus a combined worst case of 2x spread and 2x slippage. Each cell also reports its
+break-even slippage. The forward demo records actual slippage.
 
 **Swap: OMITTED from the primary result, not assumed to be zero.** No Exness swap history
 exists in the repo, and swap rates change daily, so a historical series cannot be built. Every
 results table carries the line "swap omitted, see swap sensitivity".
 How big it can get, by arithmetic only (no data):
-* Swap per night ≈ price × annual financing rate / 365. At illustrative rates, chosen
+* **The rates below are illustrative, not actual historical swap, and are never presented as
+  such.** Swap per night ≈ price × annual financing rate / 365. At illustrative rates, chosen
   without looking at Exness's table: EURUSD 1.10 × 3% → 0.9 pip; XAUUSD $3,500 × 5% → $0.48;
   NAS100 20,000 × 7% → 3.8 pts; BTCUSD $90,000 × 20% → $49 per night.
 * In R: an M5 EURUSD stop of 8 pips makes one 0.9 pip night **0.11R**. Against a 0.30R edge,
@@ -241,6 +281,22 @@ For the record: had PMH/PML been included, the family would be 90 and the Bonfer
 
 The "aligned" cell is a subset of the "none" cell, so tests are correlated. That is handled by
 the joint bootstrap below, not ignored.
+
+**Family count check [A-21, approved with clarification].** A filtered variant exists only
+where the filter can change eligibility:
+
+| Source | Can the filter change eligibility? | Variants | x TF | x instruments | Tests |
+|---|---|---|---|---|---|
+| PWH/PWL | No: a PWL is always discount, a PWH always premium | unfiltered only | 3 | 6 | 18 |
+| EQH/EQL | Yes: an EQL can sit in premium, an EQH in discount | unfiltered, aligned | 3 | 6 | 36 |
+| **Primary family** | | | | | **54** |
+| PMH/PML (descriptive, outside family) | Yes | unfiltered, aligned | 3 | 6 | 36 |
+
+No PWH/PWL "aligned" cell exists anywhere in the spec, config or reports, so there is no
+duplicate test. Safeguard for EQH/EQL, fixed now: if in some instrument x TF the aligned set
+turns out identical to the unfiltered set (same trades), the two share one result and are
+reported as one; the family count stays 54 (frozen), which makes the correction slightly
+conservative, never looser. Bonferroni reference |t| >= 3.31; Romano-Wolf primary.
 
 ### 4.4 Statistics
 * Unit = net R per executed trade. Headline: expectancy, t, trades.
@@ -368,6 +424,15 @@ Stop and target ambiguity
 24. Short stop triggers on bid >= extreme + buffer, not on bid >= stop price.
 25. R below 3 x round-trip cost → no trade, setup logged with skip reason.
 
+Data gaps
+26. 5 missing M1 bars inside an open trade → event `data_gap`, no P&L recorded; 4 missing → trade scored.
+27. Gap inside the reclaim window of a setup → setup `data_gap`, not a signal and not a "no reclaim".
+28. Missing minutes during the scheduled weekend closure or daily break → not a gap.
+
+Costs
+29. Spread conversion for each instrument and unit in the 3.4 table returns the example values.
+30. Spread 2x and slippage 4x settings change fills by exactly those amounts.
+
 ## 7. Evidence required before a forward demo (per instrument and cell)
 1. Net expectancy > 0 with Romano-Wolf adjusted p < 0.05 (Bonferroni reference |t| >= 3.31).
 2. At least 400 executed trades in 2011 to 2023.
@@ -390,30 +455,33 @@ Stop and target ambiguity
   needs ~133 trades to reach t = 2, which at 25 to 40 trades a year is 3 to 5 years per
   instrument. No real money until the pre-registered prospective requirement is met.
 
-## 9. Unresolved assumptions (need approval)
+## 9. Assumptions (A-1 to A-23 approved by collins 2026-11-26; the eight marked "approved with clarification" carry his wording)
+
+All rows are approved. Nothing in this table is a measured fact; every row is an [U] assumption in reports.
+
 
 | # | Assumption | Proposal |
 |---|---|---|
-| A-1 | Bars with missing M1 minutes | build from what exists; log gaps > 30 min; no fill-forward |
+| A-1 | Missing data | **approved with clarification**: a gap of 5+ missing minutes overlapping the sweep-to-exit sequence makes the event unscorable; no path inferred; strict 1-minute rule as sensitivity |
 | A-2 | Sunday-evening FX hours belong to the ending week under the Monday boundary | accept as a consequence of the chosen boundary |
 | A-3 | "Trading days" for the EQ 5-day limit | Mon to Fri UTC dates for FX/gold/NAS100, all dates for BTC |
 | A-4 | EQH/EQL cluster lifetime | expires 5 trading days after its newest pivot |
 | A-5 | Pivot near two clusters | joins the most recent cluster |
-| A-6 | p_min values in 3.1 rest on approximate typical daily ranges, not measured | freeze as written |
+| A-6 | p_min values | **approved**: frozen, labelled estimated design choices, no retrospective tuning |
 | A-7 | Window expires with no reclaim | level retired, no second attempt |
 | A-8 | "Plus spread" in the stop buffer for longs, whose stops trigger on the bid anyway | apply to both sides as approved (extra cushion on longs) |
-| A-9 | Spread source | Exness MT5 tick export (3 months, all six), median by hour of week, recorded with file hash before the first run; H001 floors only as a labelled fallback |
-| A-10 | Spread unit for XAUUSD, BTCUSD, NAS100 | bp of price if the tick export shows spread scaling with price, else fixed USD/points; 2 bp for BTC withdrawn |
-| A-11 | Swap | omitted from the primary result and labelled so; break-even swap + scenarios S1 to S3; S1 rates (FX 3%, gold 5%, NAS100 7%, BTC 20% a year) are illustrative, set before any run |
+| A-9 | Spread source (**approved with clarification**: the export is an initial profile only, not 2011 to 2026 history; sensitivity to 3x) | Exness MT5 tick export (3 months, all six), median by hour of week, recorded with file hash before the first run; H001 floors only as a labelled fallback |
+| A-10 | Spread unit for XAUUSD, BTCUSD, NAS100 (**approved with clarification**: unit rule and conversions in 3.4, frozen before the first run) | bp of price if the tick export shows spread scaling with price, else fixed USD/points; 2 bp for BTC withdrawn |
+| A-11 | Swap (**approved with clarification**: omission explicit, illustrative rates never shown as actual) | omitted from the primary result and labelled so; break-even swap + scenarios S1 to S3; S1 rates (FX 3%, gold 5%, NAS100 7%, BTC 20% a year) are illustrative, set before any run |
 | A-12 | Bootstrap block length and draws | mean block 4 weeks, 10,000 draws, seed fixed |
 | A-13 | ATR length for buffer, max penetration and EQ tolerance | 14 periods of the stated TF, Wilder smoothing as in H001 |
-| A-14 | Slippage values | as H001 (guesses) |
+| A-14 | Slippage values | **approved with clarification**: H001 values, labelled estimates; 2x, 4x and break-even sensitivity |
 | A-15 | Session buckets for the breakdown | UTC Asia 00-07, London 07-12, NY 12-21, other |
 | A-16 | Sharpe | per-trade R Sharpe and annualised daily-equity Sharpe at 0.5% risk, both reported |
 | A-17 | Placebo design | 200 random-offset draws, stale week-before-last levels, unequal single pivots |
-| A-18 | NAS100 data is HistData NSXUSD (a CFD-like index feed), not the Exness US100 feed | accept; differences checked in the forward demo |
+| A-18 | NAS100 proxy | **approved with clarification**: HistData NSXUSD is a proxy, not claimed identical to Exness US100/USTEC; the forward demo logs both and reports level and spread differences |
 | A-19 | Event-study horizons in stage 1 | 1, 4, 12, 24 H1 bars |
 | A-20 | Equilibrium: the H001.1 brief says "at 50% = equilibrium" (a single price); collins approved a 5% neutral band on 25 Nov | keep the approved 5% band; a zero-width band is reported as a sensitivity |
-| A-21 | The H001.1 brief says bullish signals "qualify in discount" (a requirement); H002 tests with and without the filter | keep both; the filtered cell answers the brief, the unfiltered one shows whether the filter adds anything |
+| A-21 | (**approved with clarification**: filtered variants only where eligibility can change; no PWH/PWL duplicate; see family table 4.3) The H001.1 brief says bullish signals "qualify in discount" (a requirement); H002 tests with and without the filter | keep both; the filtered cell answers the brief, the unfiltered one shows whether the filter adds anything |
 | A-22 | The H001.1 brief keeps "price approaches a mapped level" | not used: no definition exists, any trade beyond the level counts (approved in v0.2) |
 | A-23 | Descriptive bucket edges and regime definitions (4.7) | as written, fixed before any run |
