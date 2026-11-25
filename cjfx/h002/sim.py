@@ -119,7 +119,8 @@ def simulate_cell(signals: list[dict], m1: Bars, spr_m1: np.ndarray, spread_at, 
     for s in sorted(signals, key=lambda x: (x["reclaim_close_t"], x["sweep_t"])):
         row = {k: s[k] for k in ("sid", "lid", "source", "side", "level", "touches", "sweep_t", "reclaim_close_t",
                                  "extreme", "atr", "pd_state", "aligned", "sweep_to_reclaim", "gap_sweep",
-                                 "spread_extrapolated") if k in s}
+                                 "spread_extrapolated", "close", "open_", "rng", "vol_pct", "trend",
+                                 "ev1", "ev4", "ev12", "ev24") if k in s}
         if fixed_list is not None:
             if s["sid"] not in fixed_list:
                 continue

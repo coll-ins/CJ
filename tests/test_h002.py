@@ -265,3 +265,33 @@ def test_29_spread_model_prev_month_and_extrapolation():
 
 def test_how_index_monday_zero():
     assert ((ns("2024-01-08 00:30") // E.NS_H) + 72) % 168 == 0
+
+
+# ---------------------------------------------------------------- stats (4.4, M-13, M-14)
+def test_28_stationary_bootstrap_blocks():
+    from cjfx.h002.stats import stationary_index
+    idx = stationary_index(100, 200, 4.0, 1)
+    cont = (idx[:, 1:] == (idx[:, :-1] + 1) % 100).mean()
+    assert abs(cont - 0.75) < 0.02 and idx.min() >= 0 and idx.max() < 100
+
+
+def test_29_romano_wolf_monotone_and_two_sided():
+    from cjfx.h002.stats import romano_wolf
+    rng = np.random.default_rng(0)
+    tb = rng.standard_normal((5000, 3))
+    p = romano_wolf(np.array([5.0, -5.0, 0.1]), tb)
+    assert p[0] < 0.01 and p[1] < 0.01 and p[2] > 0.5
+
+
+def test_30_breakeven_crossing():
+    from cjfx.h002.stats import _crossing
+    assert _crossing([(1.0, 0.2), (2.0, -0.2)]) == 1.5
+    assert _crossing([(0.5, -0.1), (1.0, -0.2)]) == "<0.5x"
+    assert _crossing([(1.0, 0.2), (3.0, 0.1)]) == ">3x"
+
+
+def test_31_deflated_sharpe_more_trials_lower():
+    from cjfx.h002.stats import deflated_sharpe
+    a = deflated_sharpe(0.15, 500, 1.0, 3.0, 0.002, 54)
+    b = deflated_sharpe(0.15, 500, 1.0, 3.0, 0.002, 13878)
+    assert 0 < b < a < 1
