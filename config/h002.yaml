@@ -1,8 +1,8 @@
-# H002 config — FINAL DRAFT, NOT FROZEN (spec v0.4, docs/h002_spec.md)
+# H002 config — FINAL DRAFT, NOT FROZEN (spec v0.5, docs/h002_spec.md)
 # Frozen only after collins approves; the approving commit hash goes in `frozen_at`.
 # No grid: every value is single. Sensitivity values are reported, never selected.
 hypothesis: H002
-spec_version: "0.4"
+spec_version: "0.5"
 status: final_draft
 frozen_at: null                      # no historical run / forward recording before collins's freeze approval
 implementation:  # spec section 11, decided by collins 26 Nov
@@ -76,14 +76,16 @@ risk:
 costs:
   commission_per_lot: 0                # Exness MT5 Standard
   spread:
-    primary_source: exness_tick_export # PENDING: docs/exness_terminal_evidence.md step B
-    export_file_sha256: null           # recorded before the first run
-    aggregation: median_by_hour_of_week
-    unit: {EURUSD: pips, GBPUSD: pips, USDJPY: pips, XAUUSD: tbd, BTCUSD: tbd, NAS100: tbd}  # frozen before first run
+    primary_source: exness_public_tick_archive   # ticks.ex2archive.com, docs/exness_data_access.md
+    series: {EURUSD: EURUSDm, GBPUSD: GBPUSDm, USDJPY: USDJPYm, XAUUSD: XAUUSDm, BTCUSD: BTCUSDm, NAS100: USTECm}  # m = Standard, INFERRED, pending collins's confirmation
+    archive_start: {EURUSD: 2015-08, GBPUSD: 2015-08, USDJPY: 2015-08, XAUUSD: 2015-08, BTCUSD: 2017-09, NAS100: 2019-08}
+    aggregation: median_by_hour_of_week_per_calendar_month   # 168 UTC buckets; empty bucket -> month median
+    pre_archive: {method: first_12_archived_months_profile, tag: spread_extrapolated}   # option A, collins 26 Nov
+    unit_for_extrapolation: tbd        # regression on full archive, written before first run
     unit_rule: {slope_abs_t_min: 3.0, min_price_range_frac: 0.10, default_if_untestable: bp}
-    unit_regression_output: null       # written with export hash before first run
-    limitation: "3-month export = initial profile only; not historical 2011-2026 spreads" 
-    fallback_floor: {EURUSD: 1.0, XAUUSD: 2.5, BTCUSD: 20, GBPUSD: 1.3, USDJPY: 1.2, NAS100: 2.0}  # pips; labelled "unverified cost model"
+    cost_inputs_manifest: results/h002/cost_inputs.csv   # archive files + SHA-256, committed before first run
+    signals_source_unchanged: histdata_binance_bid       # archive used for costs only
+    fallback_floor: {EURUSD: 1.0, XAUUSD: 2.5, BTCUSD: 20, GBPUSD: 1.3, USDJPY: 1.2, NAS100: 2.0}  # pips; only if archive unavailable, labelled "unverified cost model"
     sensitivity_multiples: [0.5, 1.0, 1.5, 2.0, 3.0]
     btc_sensitivity: [{usd: 20}, {bp: 2}, {bp: 5}, {bp: 10}]
     pass_bar_multiple: 1.5

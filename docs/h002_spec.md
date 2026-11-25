@@ -5,11 +5,12 @@
 | v0.1 | 2026-11-25 | review | `docs/h002_review.md` (commit bec0175), 10 open questions |
 | v0.2 | 2026-11-25 | proposed | collins's decisions of 25 Nov applied (commit c438a24) |
 | v0.3 | 2026-11-25 | proposed | H001.1 brief merged in (collins chose: same study as H002); items 1 to 5 of collins's conditional sign-off recorded; BTC spread 2 bp withdrawn, cost source = Exness tick export; swap labelled omitted with break-even and scenario sensitivity |
-| v0.4 | 2026-11-26 | **FINAL DRAFT for sign-off, not frozen** | collins's confirmation of A-1 to A-23 and research principles (section 10); undefined details I-1 to I-3 (section 11); collins's 8 clarifications on A-1 to A-23 applied: unscorable events on data gaps, labels on estimates, spread units and conversions frozen, slippage sensitivity, NSXUSD proxy, no duplicate filter tests; family count check (section 4.3) |
+| v0.4 | 2026-11-26 | final draft | collins's confirmation of A-1 to A-23 and research principles (section 10); undefined details I-1 to I-3 (section 11); collins's 8 clarifications on A-1 to A-23 applied: unscorable events on data gaps, labels on estimates, spread units and conversions frozen, slippage sensitivity, NSXUSD proxy, no duplicate filter tests; family count check (section 4.3) |
+| v0.5 | 2026-11-26 | **FINAL DRAFT for freeze approval, not frozen** | spread source = Exness public tick archive (Standard `m` series, monthly hour-of-week medians), first-12-month profile before archive start, signals unchanged; I-1 A, I-2 A, I-3 B |
 
 H002 is not coded and not run. It is frozen only when collins approves this file and
 `config/h002.yaml`; the approving commit hash is then written here and in the config. Any later
-rule change creates a new version (v0.5+) and restarts any forward record.
+rule change creates a new version (v0.6+) and restarts any forward record.
 
 Related: H001 frozen at commit `897b2d5` (code, config and reports untouched). The old
 M5 breakout-fade file is now `docs/h003_candidate_m5_breakout_fade.md` (renamed in `d62f48b`,
@@ -167,22 +168,36 @@ hours or about 2011 to 2023, when gold traded at $1,050 to $2,000.
 
 **Commission**: 0 (Exness MT5 Standard).
 
-**Spread, primary value (decided before any run, never from results).**
-1. Source of truth = Exness's own bid/ask history. MT5 desktop can export the broker's tick
-   history (View > Symbols > Ticks > request a date range > Export). collins exports the
-   last 3 months of ticks for all six instruments from the demo server
-   (`docs/exness_terminal_evidence.md`, step B).
-2. From that export, per instrument: median spread by hour of week, plus a regression of
-   spread on price to decide the unit. FX in pips; for XAUUSD, BTCUSD and NAS100 the unit is
-   basis points of price if spread scales with price, else fixed USD/points.
-3. The 2011 to 2023 backtest applies the median spread by hour of week in that unit. This is
-   recorded in the config with the export file hash **before** any H002 result exists.
-4. Until the export exists, the H001 floors are the fallback and every result is labelled
-   "unverified cost model".
-5. **Limitation, stated in every report:** a 3-month export from late 2026 is an *initial
-   spread profile* only. It does not establish what Exness (or anyone) charged in 2011 to 2026.
-   Retail spreads were generally wider in the early 2010s, so the profile likely
-   **understates** historical costs. That is why the sensitivity below goes to 3x.
+**Spread, primary value (decided 26 Nov by collins: archive = yes, pre-archive = option A,
+signals stay on HistData/Binance; never chosen from results).**
+1. Source = Exness's public tick archive (`ticks.ex2archive.com`, see
+   `docs/exness_data_access.md`), Standard-account series with suffix `m`: EURUSDm, GBPUSDm,
+   USDJPYm, XAUUSDm, BTCUSDm, USTECm. `m` = Standard is inferred from spreads (EURUSDm 0.8 pip =
+   Cent series; plain series 0.6 = Pro) and is **pending collins's confirmation** of the demo
+   symbol names. If the demo shows a different suffix, that series is used instead and the
+   change is recorded before the run.
+2. For every instrument and calendar month the archive covers: median spread (ask - bid) of
+   all ticks in each hour-of-week bucket (168 buckets, UTC). A trade uses the bucket of its
+   own month and hour (stop buffer: the reclaim candle's hour, I-2). An empty bucket falls back
+   to that month's overall median.
+3. **Before the archive starts** (FX and gold 2011-01 to 2015-07; NAS100 2011-01 to 2019-07;
+   BTC 2017-08-17 to 2017-08-31): the profile of the **first 12 archived months** is applied
+   and every such trade is tagged `spread_extrapolated`. Results are also reported split by
+   archived vs extrapolated period.
+4. Unit for the extrapolated period (A-10 rule, now run on the archive's full history instead
+   of a 3-month export): regress monthly median spread on monthly mean price; if the slope has
+   |t| > 3 and the price range is at least 10%, the first-12-month profile is applied in bp of
+   price, otherwise in fixed USD/points. Archived months use their own spreads in price units,
+   so no unit question arises there.
+5. Signals (sweeps, reclaims, levels, stops, targets) stay on HistData/Binance bid prices as
+   approved; the archive is used for costs only. Ask = HistData bid + archive spread.
+6. The archive files used are listed with SHA-256 hashes in `results/h002/cost_inputs.csv`,
+   and the unit-regression output is written into `config/h002.yaml`, both committed **before**
+   any H002 outcome is computed.
+7. **Limitation, stated in every report:** the archive is Exness's real Standard spread from
+   2015 (FX, gold), 2017 (BTC) and 2019 (NAS100) onward. Earlier years are extrapolated from
+   the first archived year; retail spreads were generally wider in the early 2010s, so those
+   years are likely under-costed. The 3x spread sensitivity covers that risk.
 
 **Spread units and conversion (frozen before the first run).** Prices are bid. Ask = bid +
 spread in price units. One pip/point = `pip_size`.
@@ -470,8 +485,8 @@ All rows are approved. Nothing in this table is a measured fact; every row is an
 | A-6 | p_min values | **approved**: frozen, labelled estimated design choices, no retrospective tuning |
 | A-7 | Window expires with no reclaim | level retired, no second attempt |
 | A-8 | "Plus spread" in the stop buffer for longs, whose stops trigger on the bid anyway | apply to both sides as approved (extra cushion on longs) |
-| A-9 | Spread source (**approved with clarification**: the export is an initial profile only, not 2011 to 2026 history; sensitivity to 3x) | Exness MT5 tick export (3 months, all six), median by hour of week, recorded with file hash before the first run; H001 floors only as a labelled fallback |
-| A-10 | Spread unit for XAUUSD, BTCUSD, NAS100 (**approved with clarification**: unit rule and conversions in 3.4, frozen before the first run) | bp of price if the tick export shows spread scaling with price, else fixed USD/points; 2 bp for BTC withdrawn |
+| A-9 | Spread source | **approved, updated 26 Nov**: Exness public tick archive, Standard `m` series, monthly hour-of-week medians (section 3.4); first 12 archived months applied before archive start, tagged extrapolated; 3x sensitivity |
+| A-10 | Spread unit for the extrapolated period | **approved, updated 26 Nov**: unit regression (|t| > 3, price range >= 10%) run on the archive's full history; output committed before the first run |
 | A-11 | Swap (**approved with clarification**: omission explicit, illustrative rates never shown as actual) | omitted from the primary result and labelled so; break-even swap + scenarios S1 to S3; S1 rates (FX 3%, gold 5%, NAS100 7%, BTC 20% a year) are illustrative, set before any run |
 | A-12 | Bootstrap block length and draws | mean block 4 weeks, 10,000 draws, seed fixed |
 | A-13 | ATR length for buffer, max penetration and EQ tolerance | 14 periods of the stated TF, Wilder smoothing as in H001 |
