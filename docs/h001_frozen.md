@@ -1,0 +1,34 @@
+# H001 frozen benchmark (25 Nov 2026)
+
+H001 is preserved unchanged as the benchmark for all later hypotheses. Baseline commit: `897b2d5`.
+Do not edit these files for new hypotheses; new work goes in its own module and config.
+
+Rules: config/h001.yaml + docs/assumptions.md. Results: reports/2026-11-25_h001_*.
+
+SHA-256 of H001 source at freeze:
+
+```
+4f30e651431ce1b759bcd9e50ccbc84c755d8fabbc3a570dbed216a41373547a  config/h001.yaml
+8e53aab2b612a264f9494f9e8f87bf539677ce7448672e02f4b4d92dbfda3b62  docs/assumptions.md
+8fc4424504bee8a720a41576d02b489531c2293e4fc631a86283ce2b835b590e  cjfx/__init__.py
+4e6fcbacc7f3f37bc240594169b143236b4e03dec2123609674ad3c16b808e89  cjfx/calendar.py
+8d029cd73d4fd497f2f816044368c956db363d486545bcca4092257fb73c37de  cjfx/cli.py
+cdeee75650a6dd4bf66691273a09dfcbff2beb7dfd64952b091aedd961cc23ee  cjfx/config.py
+e77c2779712f46bd6db5ec890a191fd44ce95aa60ee0fc55fdc0c6bf62f41087  cjfx/costs.py
+9a0b3930f2e85bc9f393320e4c68e78c2033068d89b2fe66a389fabc80c06c5e  cjfx/diagnostics.py
+b8750de6028870ee51b40c60c3cecf85bb382ee2488e3240a52150a524d48bbf  cjfx/engine.py
+47ad96a08d52a0c2d38cf944a4ce3df3c7941a551d667c6212e242aea3b5a25d  cjfx/indicators.py
+deca8104444c6af9a5b2e41147c93d54cb4ca18bf952d2e1d345219b4b1e33dc  cjfx/levels.py
+b368e45548beea5074c8378eee7a98329106ec809fc001986620ee421161b710  cjfx/market.py
+793f5c6f7000ad340f15c57d6ad8002a09fa7552d0258a2fd730222ce25ab8f9  cjfx/research.py
+2130faec7a289e3919f704b5a8bc98b0baacb6e6d88eb4df4d3b869e77a85877  cjfx/sim.py
+35a7084041af851ec723b5affffa023be19245d9e060d0e1dc4bb83802347662  cjfx/stats.py
+f027894e5790dd2558a99aeef5aebf653101b2e803b0068a582eb3cf9b15966c  cjfx/synthetic.py
+3cf9249caeb215de9edf3edbc0b4865e685a50ea920596fe7be6ebf460004f51  cjfx/validation.py
+77b83a1944b5121d8ccbea938eba534764988292a0ee0d7f0a90fb4975816f81  cjfx/zones.py
+a4f6cc005b873460e2d9071a0dffea80b50e4824427f171dae7373e346af8f43  cjfx/data/__init__.py
+197c54b84d20f771e255eb749a61846ce62b76d299af118f276fe187bad7643f  cjfx/data/bars.py
+a3f6eb0ed57238fa5aed44d9a81e6943f07ccb6931a92451b1e7e5b84c7ec666  cjfx/data/binance.py
+93aba5abab63afbdd1e3db6580cf206acf29d0949736c9439d7f233cb5590141  cjfx/data/dukascopy.py
+9204e2051eb91b1e9df24ace72a203f1f564452cd75b65335fcb74f093ec9921  cjfx/data/histdata.py
+```
