@@ -1,0 +1,90 @@
+# H002 config — PROPOSED, NOT FROZEN (spec v0.2, docs/h002_spec.md)
+# Frozen only after collins approves; the approving commit hash goes in `frozen_at`.
+# No grid: every value is single. Sensitivity values are reported, never selected.
+hypothesis: H002
+spec_version: "0.2"
+status: proposed
+frozen_at: null
+
+instruments: [EURUSD, XAUUSD, BTCUSD, GBPUSD, USDJPY, NAS100]   # never pooled
+pip_size: {EURUSD: 0.0001, XAUUSD: 0.1, BTCUSD: 1.0, GBPUSD: 0.0001, USDJPY: 0.01, NAS100: 1.0}
+
+data:
+  histdata_tz_offset_hours: -5        # fixed EST, no DST; UTC = EST + 5h
+  btc_start: 2017-08-17
+time:
+  timezone: UTC
+  week_start: monday_0000_utc
+  month: utc_calendar_month
+
+periods:
+  historical_exploratory: {start: 2011-01-01, end: 2023-12-31}
+  exposed: {start: 2024-01-01, end: latest}
+
+levels:
+  sources_primary: [pw, eq]           # PWH/PWL, EQH/EQL
+  sources_descriptive: [pm]           # PMH/PML: recorded and reported, outside the family
+  eq:
+    pivot_tf: H1
+    pivot_k: 3                         # strict > on both sides; confirmed at close of bar i+3
+    tolerance_atr: 0.10                # x ATR14(H1) at newest pivot confirmation
+    min_pivots: 2
+    max_span_trading_days: 5           # A-3
+    life_trading_days_after_newest: 5  # A-4
+    level_price: most_extreme
+  premium_discount:
+    neutral_band_frac: 0.05            # of previous week's range, each side of equilibrium
+    measured_at: level
+    apply_to: [eq, pm]                 # redundant for pw
+
+sweep:
+  # Minimum penetration. FX in pips (fixed), others in basis points of the level price.
+  p_min:
+    EURUSD: {pips: 1.0}
+    GBPUSD: {pips: 1.0}
+    USDJPY: {pips: 1.0}
+    XAUUSD: {bp: 1.5}
+    BTCUSD: {bp: 5.0}
+    NAS100: {bp: 1.5}
+  reclaim_window_minutes: 60           # M5 12 candles, M15 4, H1 1 (same candle only)
+  reclaim_strict: true                 # close == level is not a reclaim
+  same_candle_allowed: true
+  max_penetration_atr: 1.0             # close beyond level + 1 x ATR14(conf TF, prior candle) -> consumed
+  attempts_per_level: 1                # first reclaim retires the level; expired window retires it (A-7)
+  confirmation_tfs: [M5, M15, H1]
+  entry: next_m5_open
+
+risk:
+  per_trade_pct: 0.5
+  target_r: 3.0
+  stop_buffer_atr: 0.10                # x ATR14(conf TF, through reclaim candle) + spread
+  stop_buffer_sensitivity: [0.05, 0.20]
+  min_stop_cost_multiple: 3.0          # skip if R < 3 x (spread + 2 x slippage)
+  max_stop: null
+  exit_end_of_week: true
+  one_trade_per_instrument_per_cell: true
+  same_m1_bar_stop_and_target: stop
+
+costs:
+  commission_per_lot: 0                # Exness MT5 Standard
+  spread_floor: {EURUSD: 1.0, XAUUSD: 2.5, BTCUSD: 20, GBPUSD: 1.3, USDJPY: 1.2, NAS100: 2.0}  # pips; only EURUSD sourced (A-9, A-10)
+  slippage_per_side: {EURUSD: 0.2, XAUUSD: 0.5, BTCUSD: 5, GBPUSD: 0.2, USDJPY: 0.2, NAS100: 0.5}  # pips, guesses
+  swap: {}                             # 0 until Exness table entered (A-11)
+  spread_stress_multiple: 1.5
+
+stats:
+  primary_family_size: 54              # 9 cells x 6 instruments; 90 if PMH/PML were included
+  bonferroni_t: 3.31                   # 3.45 for 90
+  method: romano_wolf
+  familywise_alpha: 0.05
+  bootstrap: {type: stationary_block_weeks, mean_block_weeks: 4, draws: 10000, seed: 20261125}
+  min_trades: 400
+  min_positive_years: {default: 9, of: 13, BTCUSD: 5, BTCUSD_of: 7}
+  deflated_sharpe_min: 0.95
+
+placebo:
+  random_offset: {draws: 200, u_range: [-0.5, 0.5], seed: 20261126}
+  stale_week_levels: true
+  unequal_pivots: true
+
+event_study_horizons_h1: [1, 4, 12, 24]
