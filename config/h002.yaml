@@ -1,10 +1,9 @@
-# H002 config — FINAL DRAFT, NOT FROZEN (spec v0.5, docs/h002_spec.md)
-# Frozen only after collins approves; the approving commit hash goes in `frozen_at`.
+# H002 config — FROZEN v0.6 (docs/h002_spec.md section 12 overrides earlier text)
 # No grid: every value is single. Sensitivity values are reported, never selected.
 hypothesis: H002
-spec_version: "0.5"
+spec_version: "0.6"
 status: frozen
-frozen_at: "9cf9556 (2026-11-25T22:58Z, collins)"                      # no historical run / forward recording before collins's freeze approval
+frozen_at: "v0.6, 2026-11-25T23:13Z, collins (Approve all as proposed)"                      # no historical run / forward recording before collins's freeze approval
 implementation:  # spec section 11, decided by collins 26 Nov
   gap_normal_hours: {method: derived_from_data, min_share_of_weeks: 0.5, per_year: true}   # I-1 A
   stop_buffer_spread_hour: reclaim_candle                                                 # I-2 A
@@ -81,7 +80,6 @@ costs:
     archive_start: {EURUSD: 2015-08, GBPUSD: 2015-08, USDJPY: 2015-08, XAUUSD: 2015-08, BTCUSD: 2017-09, NAS100: 2019-08}
     aggregation: median_by_hour_of_week_per_calendar_month   # 168 UTC buckets; empty bucket -> month median
     pre_archive: {method: first_12_archived_months_profile, tag: spread_extrapolated}   # option A, collins 26 Nov
-    unit_for_extrapolation: tbd        # regression on full archive, written before first run
     unit_rule: {slope_abs_t_min: 3.0, min_price_range_frac: 0.10, default_if_untestable: bp}
     cost_inputs_manifest: results/h002/cost_inputs.csv   # archive files + SHA-256, committed before first run
     signals_source_unchanged: histdata_binance_bid       # archive used for costs only
@@ -124,3 +122,33 @@ placebo:
   unequal_pivots: true
 
 event_study_horizons_h1: [1, 4, 12, 24]
+
+v06:   # spec section 12
+  weekly_flat: {fx_gold_nas: "Fri 20:00 UTC", btc: "Sun 23:55 UTC", no_entries_until: "Mon 00:00 UTC"}
+  gap_normal_hours: {tz: America/New_York, min_share_of_weeks: 0.5, source_year: previous}
+  eq_cluster: {tolerance_vs: current_level, chaining: false, sweep_not_member: true, one_cluster_per_pivot: true, sunday_counts_as: monday, expiry: "00:00 UTC after 5th trading day"}
+  fills: {touch_fills: true, stop_slippage: true, target_slippage: false, short_stop_trigger: ask, short_target_trigger: ask, ask: "bid + spread(bar month, hour)"}
+  same_source_tie: earliest_sweep
+  signals_while_open: log_and_retire
+  sensitivities_reprice_fixed_trade_list: true
+  entry_beyond_stop_or_target: skip_and_log
+  atr: {method: wilder, seed: mean_first_14_tr, existing_bars_only: true}
+  data_gap_blocks_until_gap_end: true
+  unscorable_flag_share: 0.02
+  spread_primary: previous_month_bucket_median
+  spread_sensitivity_p90: previous_month_bucket_p90
+  pre_archive: {method: median_of_first_12_month_bucket_medians, fx_unit: pips, other_unit: bp_of_first_12_month_mean_mid}
+  unit_regression: dropped
+  slippage_bp: {XAUUSD: 0.14, BTCUSD: 0.56, NAS100: 0.25}   # FX stays 0.2 pip
+  btc_signal_source: {exness_BTCUSDm_bid_from: 2017-09-01, binance_proxy_before: true}
+  rollover: "17:00 America/New_York, triple Wednesday"
+  tests_two_sided: true
+  romano_wolf: {studentised: true, centred: true}
+  deflated_sharpe: {input: per_trade_R, trials: [54, 13878]}
+  placebo_random_offset: {u_range: [0.1, 0.5], outside_range_only: true, independent_draws_per_side: true}
+  unequal_pivot_placebo: not_in_cluster_at_confirmation
+  stale_levels: descriptive_only
+  exposed_period_end: 2026-11-13
+  min_trades_all_cells: 400
+  year_attribution: entry
+  fallback_floor_trigger: archive_month_unavailable_only
