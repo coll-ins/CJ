@@ -68,5 +68,5 @@ def effective_m1(m1: pd.DataFrame, pair: str, cfg: dict, exness_profile: pd.Seri
     sp = (out["ask_c"] - out["bid_c"]) / pip
     meta.update({"median_spread_pips": float(sp.median()), "p95_spread_pips": float(sp.quantile(0.95)),
                  "commission_per_lot": costs["commission_per_lot"],
-                 "slippage_pips_per_side": costs["slippage_pips_per_side"]})
+                 "slippage_pips_per_side": (costs["slippage_pips_per_side"][pair] if isinstance(costs["slippage_pips_per_side"], dict) else costs["slippage_pips_per_side"])})
     return out, meta

@@ -66,11 +66,13 @@ class EntryFilter:
         self.cfg = cfg
         self.sessions = session_names
         fx = cfg["fixed_for_now"]
-        self.fri = fx["friday_no_entry_after"]
+        meta = cfg.get("instrument_meta", {}).get(pair, {})
+        # 24/7 instruments (BTC) have no weekend gap, so the Friday cutoff does not apply
+        self.fri = None if meta.get("weekend_trading") else fx["friday_no_entry_after"]
         self.news_ns = None
         self.blackout = fx["news_blackout_minutes"] * 60 * 10**9
         if news is not None and len(news):
-            ccy = {pair[:3], pair[3:]}
+            ccy = set(meta.get("news_currencies") or {pair[:3], pair[3:]})
             ev = news[news["currency"].isin(ccy) & (news["impact"].str.lower() == "high")]
             self.news_ns = np.sort(pd.DatetimeIndex(ev["time_utc"]).as_unit('ns').asi8)
 
@@ -79,7 +81,7 @@ class EntryFilter:
         out = []
         if not in_sessions(ts, self.sessions, self.cfg["calendar"])[0]:
             out.append("session")
-        if friday_cutoff_mask(ts, self.fri)[0]:
+        if self.fri is not None and friday_cutoff_mask(ts, self.fri)[0]:
             out.append("friday_cutoff")
         if self.news_ns is not None and len(self.news_ns):
             p = np.searchsorted(self.news_ns, t)

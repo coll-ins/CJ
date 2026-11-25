@@ -92,7 +92,8 @@ def simulate(st: Setup, stop_mode: str, exit_mode: str, mkt: Market, ctx: ExecCo
     fx, costs = cfg["fixed_for_now"], cfg["costs"]
     m1 = mkt.tf["M1"]
     pip = mkt.pip
-    slip = costs["slippage_pips_per_side"] * pip
+    sl = costs["slippage_pips_per_side"]
+    slip = (sl[mkt.pair] if isinstance(sl, dict) else sl) * pip
     i = m1.idx_open_at_or_after(st.entry_time)
     if i >= len(m1):
         return "no_data"

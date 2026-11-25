@@ -38,7 +38,7 @@ py -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[test]"
 pytest -q                                   # should print all tests passed
 
-python -m cjfx.cli download --start 2011-01-01           # ~35,000 small files, 1 to 3 hours
+python -m cjfx.cli download --start 2011-01-01           # HistData (FX, gold, NAS100) + Binance (BTC); --source dukascopy from a home connection
 python -m cjfx.cli bars                                   # data quality report -> results/data_quality.json
 python -m cjfx.cli grid                                   # all 768 configurations -> results/trades.parquet
 python -m cjfx.cli evaluate                               # walk-forward + corrections -> results/report.json
@@ -72,7 +72,10 @@ count, so reruns with changed code or settings make the bar harder, as they shou
 ```
 config/h001.yaml        the only place rule options, times and thresholds live
 cjfx/calendar.py        NY 17:00 trading day, sessions, Friday cutoff (zoneinfo, DST-safe)
-cjfx/data/dukascopy.py  download + decode bid/ask (format self-checks)
+cjfx/data/dukascopy.py  download + decode bid/ask (format self-checks; blocks cloud IPs)
+cjfx/data/histdata.py   HistData M1 (bid only, EST fixed offset -> UTC)
+cjfx/data/binance.py    Binance BTCUSDT 1m klines (trade prices)
+cjfx/data/bars.py       M1 -> M5/H1/H4/D/W/MN on the 17:00 New York calendar
 cjfx/data/bars.py       M1 -> M5, H1, H4, D, W, MN with open/close times; gap report
 cjfx/costs.py           Exness Standard spread model
 cjfx/indicators.py      ATR, swings, structure state

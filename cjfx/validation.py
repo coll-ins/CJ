@@ -80,7 +80,8 @@ def evaluate(trades: pd.DataFrame, cfg: dict, n_trials: int, n_grid: int) -> dic
     wf = v["walk_forward"]
     start, end = pd.Timestamp(wf["start"], tz="UTC"), pd.Timestamp(wf["end"], tz="UTC") + pd.Timedelta(days=1)
     tr = trades[(trades["entry_time"] >= start) & (trades["entry_time"] < end)].copy()
-    tr["strategy"] = tr["execution"] + ":" + tr["setup_type"]
+    # strategy = instrument x execution x setup type; instruments are never pooled
+    tr["strategy"] = tr["pair"] + ":" + tr["execution"] + ":" + tr["setup_type"]
     tr["col"] = tr["strategy"] + "#" + tr["config_id"]
     W_all = weekly_matrix(tr, start, end, key="col")
     n_configs_total = max(n_grid, W_all.shape[1], 1)  # configs with zero trades were still tried
@@ -93,9 +94,11 @@ def evaluate(trades: pd.DataFrame, cfg: dict, n_trials: int, n_grid: int) -> dic
     report = {"generated": datetime.now(timezone.utc).isoformat(), "period": [str(start.date()), str(end.date())],
               "n_configurations_tested": int(n_configs_total), "n_trials_for_dsr": int(n_trials_eff),
               "strategies": {}}
-    for ex in cfg["strategies"]["execution"]:
-        for stp in cfg["strategies"]["setup_type"]:
-            key = f"{ex}:{stp}"
+    pairs = [p for p in cfg["instruments"] if p in set(tr["pair"])] or sorted(set(tr["pair"]))
+    import itertools as _it
+    for pair, ex, stp in _it.product(pairs, cfg["strategies"]["execution"], cfg["strategies"]["setup_type"]):
+        if True:
+            key = f"{pair}:{ex}:{stp}"
             s_tr = tr[tr["strategy"] == key]
             res = {"in_sample_all_configs_trades": int(len(s_tr))}
             if s_tr.empty:
@@ -167,8 +170,8 @@ def run_holdout(trades: pd.DataFrame, cfg: dict, ledger_path: Path, strategy: st
         raise PermissionError(f"holdout already run {len(prior)}x for {strategy}; it is no longer a holdout")
     hs = pd.Timestamp(ho["start"], tz="UTC")
     ty = v["walk_forward"]["train_years"]
-    ex, stp = strategy.split(":")
-    s_tr = trades[(trades["execution"] == ex) & (trades["setup_type"] == stp)]
+    pair, ex, stp = strategy.split(":")
+    s_tr = trades[(trades["pair"] == pair) & (trades["execution"] == ex) & (trades["setup_type"] == stp)]
     train = s_tr[(s_tr["entry_time"] >= hs - pd.DateOffset(years=ty)) & (s_tr["exit_time"] < hs)]
     pick, _ = select_config(train, v["min_train_trades"])
     out = {"strategy": strategy, "ts": datetime.now(timezone.utc).isoformat(), "picked": pick, "forced": force}

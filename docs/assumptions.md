@@ -87,8 +87,30 @@ collins, 20 hand-checked trades match the code"). `grid` writes
 
 24. Romano-Wolf, PBO and deflated Sharpe use **weekly summed R per configuration** (by exit
     week), because configurations trade on different days and need a common time axis.
-25. Walk-forward selection pools the three pairs within a strategy, picks the highest
+25. **Instruments are never pooled.** A strategy is instrument x execution x setup type
+    (6 instruments x 6 = 36 strategies, 128 configurations each, 4,608 in total). Walk-forward
+    selection, within one instrument and strategy, picks the highest
     expectancy with at least `min_train_trades` training trades, and drops training trades that
     exit after the test year starts.
-26. The deflated Sharpe trial count is the larger of the grid size (768) and the trial ledger
+26. The deflated Sharpe trial count is the larger of the grid size (4,608) and the trial ledger
     total, so every rerun with new code or settings raises the bar.
+
+## Data sources and instruments (added 25 Nov 2026)
+
+27. **Dukascopy resets every TLS connection from the cloud workspace** (allowed by the proxy,
+    reset by the server; 7 attempts, 25 Nov 2026). The cloud runs therefore use:
+    - **HistData.com M1, bid only**, for EURUSD, XAUUSD, GBPUSD, USDJPY and NAS100 (HistData
+      symbol NSXUSD). Timestamps are EST with no DST (fixed UTC-5) and are converted to UTC.
+    - **Binance spot BTCUSDT 1m klines** (data.binance.vision) for BTCUSD. These are trade
+      prices on Binance, not Exness CFD quotes. History starts 17 Aug 2017, so BTC has 2 walk-forward
+      folds (test years 2022, 2023) against 9 for the others.
+    Dukascopy (bid and ask) stays available with `download --source dukascopy` from a home
+    connection.
+28. **Bid-only data means a constant spread.** The ask is bid + `spread_floor_pips`. Real
+    spreads widen 3 to 10x at news and the 17:00 rollover; that cost is missing, so results are
+    optimistic, most of all for intraday trades and tight stops.
+29. **Spread and slippage for the new instruments are unverified guesses**: XAUUSD $0.25,
+    BTCUSD $20, NAS100 2.0 points; slippage per side $0.05, $5, 0.5 points.
+30. **BTC trades 24/7.** Weekend trading days exist, the Friday entry cutoff is off for it,
+    W candles run Monday..Sunday trading days, and the 17:00 New York boundary still defines D.
+31. **News currencies** per instrument come from `instrument_meta.news_currencies`.

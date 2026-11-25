@@ -64,6 +64,8 @@ def validate(cfg: dict) -> None:
     for pair in cfg["instruments"]:
         if pair not in cfg["pip_size"]:
             raise ConfigError(f"pip_size missing for {pair}")
+        if pair not in cfg["costs"]["spread_floor_pips"]:
+            raise ConfigError(f"costs.spread_floor_pips missing for {pair}")
 
 
 @dataclass(frozen=True)

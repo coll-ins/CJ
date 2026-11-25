@@ -4,8 +4,8 @@
   python -m cjfx.cli bars
   python -m cjfx.cli grid
   python -m cjfx.cli evaluate
-  python -m cjfx.cli sensitivity --strategy swing_h1:continuation --grid-point "consecutive_3|h1_swing|sweep_wick|fixed_3r|london_ny"
-  python -m cjfx.cli holdout --strategy swing_h1:continuation      # runs once per strategy
+  python -m cjfx.cli sensitivity --strategy EURUSD:swing_h1:continuation --grid-point "consecutive_3|h1_swing|sweep_wick|fixed_3r|london_ny"
+  python -m cjfx.cli holdout --strategy EURUSD:swing_h1:continuation      # runs once per strategy
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ import pandas as pd
 
 from .config import load_config, numeric_fixed_keys, scaled
 from .costs import effective_m1, exness_spread_profile, load_exness_ticks
-from .data import dukascopy
+from .data import binance, dukascopy, histdata
 from .data.bars import build_all, quality_report
 from .research import audit_sample, grid_size, log_trials, one_open_trade_per_pair, run_pair, trial_count
 from .stats import summarize
@@ -50,8 +50,10 @@ def cmd_download(a, cfg):
     data = Path(a.data)
     for pair in a.pairs or cfg["instruments"]:
         print(f"downloading {pair} {a.start}..{a.end}", flush=True)
-        m1 = dukascopy.download_range(pair, date.fromisoformat(a.start), date.fromisoformat(a.end),
-                                      data / "raw" / "dukascopy", workers=a.workers)
+        src = a.source or cfg.get("instrument_meta", {}).get(pair, {}).get("source", "dukascopy")
+        mod = {"dukascopy": dukascopy, "histdata": histdata, "binance": binance}[src]
+        m1 = mod.download_range(pair, date.fromisoformat(a.start), date.fromisoformat(a.end),
+                                data / "raw" / src, workers=a.workers)
         out = m1_path(data, pair)
         out.parent.mkdir(parents=True, exist_ok=True)
         if out.exists() and not a.overwrite:
@@ -104,7 +106,7 @@ def run_grid(cfg, data: Path, pairs, news, label: str, results: Path, grid_overr
     c = dict(cfg)
     if grid_override:
         c["grid"] = {**cfg["grid"], **grid_override}
-    log_trials(results / "trials.jsonl", cfg, grid_size(c), label, "-".join(hashes))
+    log_trials(results / "trials.jsonl", cfg, grid_size(c) * len(pairs), label, "-".join(hashes))
     return tr, rj, metas
 
 
@@ -125,21 +127,22 @@ def cmd_grid(a, cfg):
 def cmd_evaluate(a, cfg):
     results = Path(a.results)
     tr = pd.read_parquet(results / "trades.parquet")
-    rep = evaluate(tr, cfg, trial_count(results / "trials.jsonl"), grid_size(cfg))
+    rep = evaluate(tr, cfg, trial_count(results / "trials.jsonl"), grid_size(cfg) * max(1, tr["pair"].nunique()))
     cm = results / "cost_model.json"
     if cm.exists():
         rep["cost_model"] = json.loads(cm.read_text())
     (results / "report.json").write_text(json.dumps(rep, indent=2, default=_json))
-    print(f"{'strategy':32s} {'verdict':24s} {'OOS n':>6s} {'E[R]':>7s} {'t':>6s} {'PBO':>5s}")
+    print(f"{'strategy':40s} {'verdict':24s} {'OOS n':>6s} {'E[R]':>7s} {'t':>6s} {'PBO':>5s}")
     for k, s in rep["strategies"].items():
         o = s.get("walk_forward_oos", {})
-        print(f"{k:32s} {s['verdict']:24s} {o.get('trades', 0):6d} {o.get('expectancy_R', float('nan')):7.3f} "
+        print(f"{k:40s} {s['verdict']:24s} {o.get('trades', 0):6d} {o.get('expectancy_R', float('nan')):7.3f} "
               f"{o.get('t_stat', float('nan')):6.2f} {s.get('pbo', {}).get('pbo', float('nan')):5.2f}")
 
 
 def cmd_sensitivity(a, cfg):
     data, results = Path(a.data), Path(a.results)
-    ex, stp = a.strategy.split(":")
+    pair, ex, stp = a.strategy.split(":")
+    a.pairs = [pair]
     zb, liq, st, exi, ses = a.grid_point.split("|")
     override = {"zone_base": [zb], "liquidity": [liq], "stop": [st], "exit": [exi], "entry_sessions": [ses]}
     wf = cfg["validation"]["walk_forward"]
@@ -154,7 +157,7 @@ def cmd_sensitivity(a, cfg):
         s = summarize(tr["R"].to_numpy()) if len(tr) else {"trades": 0}
         rows.append({"param": key, "factor": f, **s})
         print(f"{key:40s} x{f:<5} n={s.get('trades', 0):5d} E[R]={s.get('expectancy_R', float('nan')):.3f}")
-    pd.DataFrame(rows).to_csv(results / f"sensitivity_{ex}_{stp}.csv", index=False)
+    pd.DataFrame(rows).to_csv(results / f"sensitivity_{pair}_{ex}_{stp}.csv", index=False)
 
 
 def cmd_holdout(a, cfg):
@@ -178,6 +181,7 @@ def main(argv=None):
     d.add_argument("--end", default=str(date.today()))
     d.add_argument("--workers", type=int, default=6)
     d.add_argument("--overwrite", action="store_true")
+    d.add_argument("--source", choices=["histdata", "binance", "dukascopy"], help="override instrument_meta.source")
     sub.add_parser("bars")
     g = sub.add_parser("grid")
     g.add_argument("--news", help="CSV with time_utc,currency,impact (high-impact events)")
