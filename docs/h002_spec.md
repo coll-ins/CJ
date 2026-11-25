@@ -4,7 +4,7 @@
 |---|---|---|---|
 | v0.1 | 2026-11-25 | review | `docs/h002_review.md` (commit bec0175), 10 open questions |
 | v0.2 | 2026-11-25 | proposed | collins's decisions of 25 Nov applied (commit c438a24) |
-| v0.3 | 2026-11-25 | **PROPOSED, not frozen** | items 1 to 5 of collins's conditional sign-off recorded; BTC spread 2 bp withdrawn, cost source = Exness tick export; swap labelled omitted with break-even and scenario sensitivity |
+| v0.3 | 2026-11-25 | **PROPOSED, not frozen** | H001.1 brief merged in (collins chose: same study as H002); items 1 to 5 of collins's conditional sign-off recorded; BTC spread 2 bp withdrawn, cost source = Exness tick export; swap labelled omitted with break-even and scenario sensitivity |
 
 H002 is not coded and not run. It is frozen only when collins approves this file and
 `config/h002.yaml`; the approving commit hash is then written here and in the config. Any later
@@ -13,6 +13,10 @@ rule change creates v0.3+ and restarts any forward record.
 Related: H001 frozen at commit `897b2d5` (code, config and reports untouched). The old
 M5 breakout-fade file is now `docs/h003_candidate_m5_breakout_fade.md` (renamed in `d62f48b`,
 contents unchanged, `git log --follow` shows its history). Registry: `docs/hypotheses.md`.
+
+**H001.1 = H002.** collins's H001.1 brief (25 Nov, 21:08 UTC) describes this same study and
+collins chose to treat them as one. Its additions are in sections 4.7 to 4.9. H001 is the frozen
+benchmark (`docs/h001_frozen.md`, commit cb7c990 on `claude/project-thread-mqtukq`).
 
 Items marked **[A-n]** are assumptions not covered by collins's decisions. They are listed in
 section 9 and need approval like everything else.
@@ -273,6 +277,53 @@ the joint bootstrap below, not ignored.
   this, possibly by half. If a PWH/PWL cell ends below 400 executed trades it is reported as
   "insufficient evidence" regardless of its t.
 
+### 4.7 Descriptive investigations (H001.1 brief: depth, speed, candle, source, regime)
+These are reported for every primary cell, **outside the test family, with nominal statistics
+only**. Bucket edges are fixed here, before any run, so they cannot be drawn around a result.
+
+| Variable | Definition | Buckets |
+|---|---|---|
+| Sweep depth | (extreme - L) / ATR14(conf TF) | <0.25, 0.25-0.5, 0.5-1.0 |
+| Reclaim speed | confirmation candles from sweep candle to reclaim candle | same candle, 1-3, 4-11 (M5); same, 1-3 (M15); H1 is always same candle |
+| Reclaim candle body | abs(close - open) / (high - low) | <0.33, 0.33-0.67, >0.67 |
+| Reclaim close distance | (L - close) / ATR14 for shorts, mirror for longs | <0.1, 0.1-0.3, >0.3 |
+| Liquidity source | PW, EQ (primary), PM (descriptive), overlaps tagged | as recorded |
+| Volatility regime | ATR14(D1) percentile within the trailing 252 completed days | <33, 33-67, >67 |
+| Trend regime | sign of (previous week close - close 4 weeks earlier) vs trade direction | with, against |
+
+Any bucket that looks good is a **new hypothesis**, never a filter added to H002. It would go
+in as H00x with its own spec and could only be confirmed on the forward demo, because all
+historical data will by then have been used to find it. With 7 variables x ~3 buckets x 9
+cells x 6 instruments (about 1,100 comparisons), several nominal |t| > 2 results are expected
+by chance alone.
+
+### 4.8 Comparison against H001 (frozen benchmark)
+* Same data files (HistData/Binance, same date range), same risk (0.5% per trade, R units).
+* Costs: H002 is reported twice: under its primary cost model, and under the **H001 cost
+  floors exactly as frozen**, so the comparison with H001's frozen results is like-for-like.
+  H001's code and results are not rerun or changed.
+* Known non-identical items, stated rather than hidden: H001 used the 17:00 New York day
+  boundary and H002 uses UTC; H001 had walk-forward selection over 13,824 configs, H002 has
+  no parameter selection.
+* Table per instrument: trades, trade frequency per year, win rate, profit factor,
+  expectancy, max drawdown, t, for H001 (best walk-forward and full-period figures from its
+  reports) and each H002 cell.
+* "Out-of-sample robustness" for both can only come from the forward demo (4.1).
+
+### 4.9 Independent review and evidence labels
+* **Before freeze**: an independent reviewer (a separate Claude agent given only this spec,
+  the config and the data description, not my reasoning) audits it for look-ahead, ambiguity
+  and undeclared degrees of freedom. Findings and my responses go in
+  `docs/h002_independent_review.md`; collins rules on each.
+* **After stage 2**: a second independent agent re-implements the sweep/reclaim state machine
+  from this spec alone and must reproduce the signal list for one instrument-year exactly, plus
+  20 randomly drawn trades hand-checked against M1 bars.
+* Every statement in H002 reports carries one label:
+  **[E] established evidence** (measured on our data, with the file/commit),
+  **[H] hypothesis** (untested claim), **[U] unverified assumption** (a number or rule taken
+  without data, listed in section 9), **[B] backtest result** (with period, cost model and
+  whether the data was exposed), **[F] forward-demo result**.
+
 ## 5. Records
 Every eligible setup is written to `results/h002/setups.parquet` with level source, level price,
 availability time, sweep bar, extreme, reclaim bar, premium/discount state, touch count, ATRs,
@@ -362,3 +413,7 @@ Stop and target ambiguity
 | A-17 | Placebo design | 200 random-offset draws, stale week-before-last levels, unequal single pivots |
 | A-18 | NAS100 data is HistData NSXUSD (a CFD-like index feed), not the Exness US100 feed | accept; differences checked in the forward demo |
 | A-19 | Event-study horizons in stage 1 | 1, 4, 12, 24 H1 bars |
+| A-20 | Equilibrium: the H001.1 brief says "at 50% = equilibrium" (a single price); collins approved a 5% neutral band on 25 Nov | keep the approved 5% band; a zero-width band is reported as a sensitivity |
+| A-21 | The H001.1 brief says bullish signals "qualify in discount" (a requirement); H002 tests with and without the filter | keep both; the filtered cell answers the brief, the unfiltered one shows whether the filter adds anything |
+| A-22 | The H001.1 brief keeps "price approaches a mapped level" | not used: no definition exists, any trade beyond the level counts (approved in v0.2) |
+| A-23 | Descriptive bucket edges and regime definitions (4.7) | as written, fixed before any run |
