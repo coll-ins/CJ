@@ -3,7 +3,8 @@
 | Version | Date | Status | Change |
 |---|---|---|---|
 | v0.1 | 2026-11-25 | review | `docs/h002_review.md` (commit bec0175), 10 open questions |
-| v0.2 | 2026-11-25 | **PROPOSED, not frozen** | collins's decisions of 25 Nov applied; exact rules below |
+| v0.2 | 2026-11-25 | proposed | collins's decisions of 25 Nov applied (commit c438a24) |
+| v0.3 | 2026-11-25 | **PROPOSED, not frozen** | items 1 to 5 of collins's conditional sign-off recorded; BTC spread 2 bp withdrawn, cost source = Exness tick export; swap labelled omitted with break-even and scenario sensitivity |
 
 H002 is not coded and not run. It is frozen only when collins approves this file and
 `config/h002.yaml`; the approving commit hash is then written here and in the config. Any later
@@ -34,7 +35,7 @@ section 9 and need approval like everything else.
   so (a) they can set that week's high/low, and (b) trades signalled on Sunday evening use the
   levels of the week before. This is what a Monday 00:00 UTC boundary means; it is stated so
   nobody is surprised later.
-* Exness server time is not assumed. It is checked separately (`docs/exness_server_time_check.md`).
+* Exness server time is not assumed. It is checked separately (`docs/exness_terminal_evidence.md`, step A); **status: PENDING collins's evidence**.
 
 ## 2. Liquidity levels
 
@@ -131,16 +132,77 @@ gap still follows the same rules; gap sweeps are tagged for a separate breakdown
   once per cell (each cell has one source anyway) and tagged with all sources it touched.
 
 ### 3.4 Costs
-* Exness MT5 Standard: commission 0.
-* Spread: constant floor per instrument until Exness spread logs exist. EURUSD 1.0 pip
-  (dailyforex average, read 2026-11-25). GBPUSD 1.3, USDJPY 1.2, XAUUSD $0.25, BTCUSD $20,
-  NAS100 2.0 pts are **unverified guesses [A-9]**. BTC's constant $20 is badly wrong in
-  relative terms at $4,000 vs $90,000 **[A-10]**.
-* Slippage per side: EURUSD/GBPUSD/USDJPY 0.2 pip, XAUUSD $0.05, BTCUSD $5, NAS100 0.5 pt
-  (guesses, as H001).
-* Swap: 0 until the Exness swap table is entered. The end-of-week exit caps holding at 5 days
-  but gold, NAS100 and BTC swaps can be material **[A-11]**.
-* Stress: every primary result is rerun at 1.5x spread.
+
+**Evidence held today (25 Nov 2026).** I tried to pull Exness's published spreads and swap
+tables; the cloud environment cannot reach exness.com or the broker-review sites, and the
+web-search snippets that came back were third-party and contradictory (BTC Standard spread
+quoted anywhere from "from 25 points" to "200 to 400 points", no stated point size). None of
+that is usable. What exists:
+
+| Instrument | Observation | Source | Weight |
+|---|---|---|---|
+| EURUSD | 1.0 pip average, Standard | dailyforex review, read 25 Nov | third-party average |
+| XAUUSD | bid 3575.057 / ask 3575.278 = **$0.221 = 0.62 bp** | collins's Exness demo screenshot, 26 Nov 00:08 Nairobi (21:08 UTC, late NY session) | **one off-hours tick** |
+| all others | none | — | guesses only |
+
+One gold tick does support the $0.25 floor at today's price, but proves nothing about other
+hours or about 2011 to 2023, when gold traded at $1,050 to $2,000.
+
+**Commission**: 0 (Exness MT5 Standard).
+
+**Spread, primary value (decided before any run, never from results).**
+1. Source of truth = Exness's own bid/ask history. MT5 desktop can export the broker's tick
+   history (View > Symbols > Ticks > request a date range > Export). collins exports the
+   last 3 months of ticks for all six instruments from the demo server
+   (`docs/exness_terminal_evidence.md`, step B).
+2. From that export, per instrument: median spread by hour of week, plus a regression of
+   spread on price to decide the unit. FX in pips; for XAUUSD, BTCUSD and NAS100 the unit is
+   basis points of price if spread scales with price, else fixed USD/points.
+3. The 2011 to 2023 backtest applies the median spread by hour of week in that unit. This is
+   recorded in the config with the export file hash **before** any H002 result exists.
+4. Until the export exists, the H001 floors are the fallback and every result is labelled
+   "unverified cost model".
+
+**BTC specifically.** The v0.2 proposal of 2 bp is **withdrawn**: it had no observation
+behind it. The reasoning that remains is structural: at a constant $20, BTC's cost was 50 bp
+of price at $4,000 (2018) and 2 bp at $100,000 (2025), a 25x swing in relative cost driven by
+nothing but the price level. A broker spread that stayed fixed in USD across that range is
+implausible, but that is an argument, not evidence. The unit and value come from step 2.
+
+**Spread sensitivity (all reported, none selected).** Every primary cell is rerun at 0.5x,
+1x, 1.5x and 2x the primary spread. For BTC also: flat $20 (H001 value), 2 bp, 5 bp and
+10 bp. For each cell the report gives the **break-even spread** (the spread at which net
+expectancy hits zero), so anyone can compare it against what they see on the terminal.
+The pass bar (section 7, point 5) uses 1.5x, fixed in advance.
+
+**Slippage per side**: EURUSD/GBPUSD/USDJPY 0.2 pip, XAUUSD $0.05, BTCUSD $5, NAS100 0.5 pt
+(guesses as in H001; forward demo records actual slippage).
+
+**Swap: OMITTED from the primary result, not assumed to be zero.** No Exness swap history
+exists in the repo, and swap rates change daily, so a historical series cannot be built. Every
+results table carries the line "swap omitted, see swap sensitivity".
+How big it can get, by arithmetic only (no data):
+* Swap per night ≈ price × annual financing rate / 365. At illustrative rates, chosen
+  without looking at Exness's table: EURUSD 1.10 × 3% → 0.9 pip; XAUUSD $3,500 × 5% → $0.48;
+  NAS100 20,000 × 7% → 3.8 pts; BTCUSD $90,000 × 20% → $49 per night.
+* In R: an M5 EURUSD stop of 8 pips makes one 0.9 pip night **0.11R**. Against a 0.30R edge,
+  three nights erase it. Swap matters most for trades held over Wednesday (triple swap) and for
+  M5 cells with small stops.
+* Every executed trade logs nights held (count of 22:00 UTC rollovers crossed, triple on
+  Wednesday; BTC daily including weekends).
+
+Swap sensitivity, reported for every primary cell:
+1. **Break-even swap**: the adverse swap per night (pips/points and % per year) that takes
+   net expectancy to zero. This needs no swap data and is the headline number.
+2. Scenario S1: adverse swap on both directions at the illustrative rates above.
+3. Scenario S2: 2x S1.
+4. Scenario S3: Exness's actual swap long/short from the Specification window
+   (`docs/exness_terminal_evidence.md`, step C), applied as constant over history, once
+   collins supplies it. Labelled "current rates applied to history".
+5. Share of trades held at least one night, and the R distribution by nights held.
+A cell passes section 7 only if it stays positive under S1. Whether collins's account has
+swap-free status (Exness Personal Area > Trading conditions) is recorded; if it does, the
+forward demo will show swap = 0 but S1 still applies to the backtest.
 
 ## 4. Experiment design
 
@@ -260,7 +322,8 @@ Stop and target ambiguity
 2. At least 400 executed trades in 2011 to 2023.
 3. Positive in at least 9 of 13 years (BTC 5 of 7).
 4. Longs and shorts each non-negative.
-5. Still positive at 1.5x spread and at buffers 0.05 and 0.2 x ATR (reported, never selected).
+5. Still positive at 1.5x the primary spread, under swap scenario S1, and at buffers 0.05 and
+   0.2 x ATR (reported, never selected).
 6. Beats its placebo (4.5).
 7. Deflated Sharpe > 0.95 with 54 trials.
 8. Exposed period expectancy not negative.
@@ -288,9 +351,9 @@ Stop and target ambiguity
 | A-6 | p_min values in 3.1 rest on approximate typical daily ranges, not measured | freeze as written |
 | A-7 | Window expires with no reclaim | level retired, no second attempt |
 | A-8 | "Plus spread" in the stop buffer for longs, whose stops trigger on the bid anyway | apply to both sides as approved (extra cushion on longs) |
-| A-9 | Spread floors other than EURUSD are guesses | use them, flag results; replace with Exness demo spread logs before the forward demo |
-| A-10 | BTC constant $20 spread across a 30x price range | switch BTC to a proportional spread of 2 bp of price, or keep $20; needs a decision |
-| A-11 | Swap = 0 | accept for stage 2, enter the Exness swap table before stage 3 if collins can export it from the demo terminal |
+| A-9 | Spread source | Exness MT5 tick export (3 months, all six), median by hour of week, recorded with file hash before the first run; H001 floors only as a labelled fallback |
+| A-10 | Spread unit for XAUUSD, BTCUSD, NAS100 | bp of price if the tick export shows spread scaling with price, else fixed USD/points; 2 bp for BTC withdrawn |
+| A-11 | Swap | omitted from the primary result and labelled so; break-even swap + scenarios S1 to S3; S1 rates (FX 3%, gold 5%, NAS100 7%, BTC 20% a year) are illustrative, set before any run |
 | A-12 | Bootstrap block length and draws | mean block 4 weeks, 10,000 draws, seed fixed |
 | A-13 | ATR length for buffer, max penetration and EQ tolerance | 14 periods of the stated TF, Wilder smoothing as in H001 |
 | A-14 | Slippage values | as H001 (guesses) |
