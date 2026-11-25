@@ -3,8 +3,8 @@
 # No grid: every value is single. Sensitivity values are reported, never selected.
 hypothesis: H002
 spec_version: "0.5"
-status: final_draft
-frozen_at: null                      # no historical run / forward recording before collins's freeze approval
+status: frozen
+frozen_at: "9cf9556 (2026-11-25T22:58Z, collins)"                      # no historical run / forward recording before collins's freeze approval
 implementation:  # spec section 11, decided by collins 26 Nov
   gap_normal_hours: {method: derived_from_data, min_share_of_weeks: 0.5, per_year: true}   # I-1 A
   stop_buffer_spread_hour: reclaim_candle                                                 # I-2 A

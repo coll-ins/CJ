@@ -6,10 +6,12 @@
 | v0.2 | 2026-11-25 | proposed | collins's decisions of 25 Nov applied (commit c438a24) |
 | v0.3 | 2026-11-25 | proposed | H001.1 brief merged in (collins chose: same study as H002); items 1 to 5 of collins's conditional sign-off recorded; BTC spread 2 bp withdrawn, cost source = Exness tick export; swap labelled omitted with break-even and scenario sensitivity |
 | v0.4 | 2026-11-26 | final draft | collins's confirmation of A-1 to A-23 and research principles (section 10); undefined details I-1 to I-3 (section 11); collins's 8 clarifications on A-1 to A-23 applied: unscorable events on data gaps, labels on estimates, spread units and conversions frozen, slippage sensitivity, NSXUSD proxy, no duplicate filter tests; family count check (section 4.3) |
-| v0.5 | 2026-11-26 | **FINAL DRAFT for freeze approval, not frozen** | spread source = Exness public tick archive (Standard `m` series, monthly hour-of-week medians), first-12-month profile before archive start, signals unchanged; I-1 A, I-2 A, I-3 B |
+| v0.5 | 2026-11-26 | **FROZEN** (collins, 2026-11-25 22:58 UTC; content of commit 9cf9556) | spread source = Exness public tick archive (Standard `m` series, monthly hour-of-week medians), first-12-month profile before archive start, signals unchanged; I-1 A, I-2 A, I-3 B |
 
-H002 is not coded and not run. It is frozen only when collins approves this file and
-`config/h002.yaml`; the approving commit hash is then written here and in the config. Any later
+**FROZEN on 2026-11-25 22:58 UTC by collins ("freeze"). Frozen content = commit 9cf9556;
+hashes in `docs/h002_frozen.md`.** Open inputs that the spec itself defines as filled before
+the run (not rule changes): Standard symbol suffix confirmation, unit-regression output, cost
+input manifest. Any later
 rule change creates a new version (v0.6+) and restarts any forward record.
 
 Related: H001 frozen at commit `897b2d5` (code, config and reports untouched). The old
