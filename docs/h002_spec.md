@@ -498,7 +498,7 @@ All rows are approved. Nothing in this table is a measured fact; every row is an
 7. No live deployment on historical backtest profitability alone.
 8. No historical run and no forward-demo recording before collins's freeze approval.
 
-## 11. Implementation details still undefined (choices for collins, NOT decided)
+## 11. Implementation details (decided by collins 26 Nov 2026: I-1 A, I-2 A, I-3 B; fixed before the run)
 
 | # | Detail | Option A | Option B | Consequence |
 |---|---|---|---|---|
@@ -506,4 +506,4 @@ All rows are approved. Nothing in this table is a measured fact; every row is an
 | I-2 | Which spread goes into the stop buffer once spread varies by hour of week | Spread at the reclaim candle's hour | Spread at the entry bar's hour | Almost always the same hour; differs only when the reclaim closes on the hour boundary. Effect on R is tiny |
 | I-3 | BTC "positive in 5 of 7 years" when 2017 is a partial year (from 17 Aug) | Count 2017 as a year | Count 2018 to 2023 only (6 years, require 4 of 6) | A lets 4.5 months count as a full year; B is cleaner but a weaker test |
 
-Recommendation: A, A, B. None of these is applied until collins picks.
+**Decided: I-1 = A (normal hours derived from data, 50% of weeks), I-2 = A (spread at the reclaim candle's hour), I-3 = B (BTC years 2018 to 2023, at least 4 of 6 positive).** Section 7 point 3 for BTC reads accordingly.

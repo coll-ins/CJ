@@ -5,7 +5,10 @@ hypothesis: H002
 spec_version: "0.4"
 status: final_draft
 frozen_at: null                      # no historical run / forward recording before collins's freeze approval
-undecided: {gap_normal_hours: null, stop_buffer_spread_hour: null, btc_partial_2017: null}  # spec section 11, I-1..I-3
+implementation:  # spec section 11, decided by collins 26 Nov
+  gap_normal_hours: {method: derived_from_data, min_share_of_weeks: 0.5, per_year: true}   # I-1 A
+  stop_buffer_spread_hour: reclaim_candle                                                 # I-2 A
+  btc_years_rule: {years: [2018, 2023], min_positive: 4}                                  # I-3 B
 
 instruments: [EURUSD, XAUUSD, BTCUSD, GBPUSD, USDJPY, NAS100]   # never pooled
 pip_size: {EURUSD: 0.0001, XAUUSD: 0.1, BTCUSD: 1.0, GBPUSD: 0.0001, USDJPY: 0.01, NAS100: 1.0}
@@ -110,7 +113,7 @@ stats:
   familywise_alpha: 0.05
   bootstrap: {type: stationary_block_weeks, mean_block_weeks: 4, draws: 10000, seed: 20261125}
   min_trades: 400
-  min_positive_years: {default: 9, of: 13, BTCUSD: 5, BTCUSD_of: 7}
+  min_positive_years: {default: 9, of: 13, BTCUSD: 4, BTCUSD_of: 6}   # BTC 2018-2023 (I-3)
   deflated_sharpe_min: 0.95
 
 placebo:
