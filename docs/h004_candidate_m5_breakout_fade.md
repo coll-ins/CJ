@@ -1,3 +1,6 @@
+> Renamed 2026-11-26: was `docs/h003_candidate_m5_breakout_fade.md` ("H003-candidate"), now **H004-candidate**,
+> because H003 is the time-series momentum study (docs/h003_spec.md). Contents below unchanged.
+
 # H002 pre-registration (draft, NOT run) — 25 Nov 2026
 
 Status: written before any H002 backtest. Do not change rules or the pass bar after a run.
