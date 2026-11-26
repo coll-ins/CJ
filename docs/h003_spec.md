@@ -242,3 +242,35 @@ reported in the run]. Trade count is not the sample size here; independent years
 
 After sign-off: freeze hash recorded in `docs/h003_frozen.md`, unit tests on synthetic series, then
 one run. No parameter in sections 3-5 changes after the run.
+
+---
+
+## 9. v0.2 pre-run amendment (2026-11-26, before any H003 statistic was computed)
+
+collins said "test it now" at 20:46 UTC on 26 Nov without answering D-2..D-7, so the spec
+defaults apply: D-1 trend approved; D-2 family 6, |t| ≥ 2.64; D-3 no stop loss; D-4 not needed for
+the test; D-6 descriptive portfolio kept; D-7 accepted. Data that is not available forces these
+changes, all made before any H003 return was computed:
+
+* **A-1 Swap (4.3).** No interest-rate source is reachable (FRED, ECB, BoE, NY Fed, BoJ blocked) and
+  no Exness swap figures have arrived. The rate differential (carry) is therefore **omitted** and
+  swap is modelled as a flat financing cost of m per year on |notional| every night, both sides:
+  m = 2% (FX, XAU, NAS100), 10% (BTC) primary; criterion 4 stress m = 4% (BTC 20%); also 0 and 6%
+  reported. Triple night on Wednesday (FX/XAU/NAS100), BTC 1 night every calendar day.
+  All results are labelled **PROVISIONAL: carry omitted** until rates and Exness swaps are in.
+  Because positions do not depend on costs, the final swap is a re-pricing of the same position path,
+  not a new run.
+* **A-2 BTC data.** Binance is unreachable; BTC uses Exness BTCUSDm bid only, from 2017-09. With 365
+  days warm-up, BTC evaluation is 2018-09 to 2023-12 (about 5.3 years).
+* **A-3 Fills (3.4) implementation.** Cost per trade = |Δw| × (half spread + slippage) / price,
+  spread = Exness archive median for that month and UTC hour-of-week; on round trips this equals
+  "buy at bid + spread, sell at bid". Slippage per side as H002 v0.6 (EURUSD/GBPUSD/USDJPY 0.2 pip,
+  XAUUSD 0.5 pip = $0.05, NAS100 0.5 pt, BTC $5).
+* **A-4 Day rows.** A bar belongs to trading day = calendar date of (NY time + 7 h). FX/XAU/NAS100
+  days with < 50% of that year's median bar count are dropped. Execution bar = first M1 bar at or
+  after 03:00 NY within the next trading day; if none within 60 minutes, that day's close is used.
+* **A-5 Placebo (5.3a).** 2,000 draws: the sign of S is permuted in 21-day blocks, |w| kept, costs
+  re-applied; p = share of placebo net means ≥ real net mean. Benchmarks (5.3b, 5.5) pass when the
+  Newey-West t of the daily difference series is > 1.645.
+* **A-6 Deflated Sharpe (5.6).** Bailey & López de Prado (2014), N = 13,884 trials, trial-SR
+  variance = 1/T (null), skew and kurtosis of the daily net series.
