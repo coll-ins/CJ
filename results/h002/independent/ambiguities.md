@@ -1,0 +1,18 @@
+# Independent re-implementation: ambiguities and the choices made
+
+Script: indep_signals.py. Outputs: signals_EURUSD_2019.csv (reclaims only, weekend-window excluded) and all_outcomes_EURUSD_2019.csv (every 2019 sweep with its outcome: reclaim, consumed, expired or weekend_window).
+
+1. **ATR seed (M-5).** The first bar of the series has no previous close. TR[0] = high - low, and the seed is the mean of TR[0..13]. ATR runs from the first bar in the file (2011), so by 2019 the seed no longer matters.
+2. **Consumed ATR "through candle c-1".** I used the previous existing candle, so a weekend or a gap does not change which candle that is.
+3. **Order on the sweep candle.** Step 1 runs first, then step 2 on the same candle in this order: extreme, then reclaim, then consumed, then expired. This means an H1 sweep candle that closes beyond L + ATR is labelled consumed, not expired. Either way there is no signal.
+4. **Window end with missing candles (m-3).** A candle that closes after the deadline cannot reclaim. It can still be labelled consumed before expired. Neither changes the signals.
+5. **Weekend window (B-1).** The state machine runs as normal: a sweep in the window uses up the level's one attempt. A reclaim is excluded from the signal list if its sweep candle opens in [Fri 20:00, Mon 00:00) UTC or its reclaim candle closes in that window. A close at exactly Mon 00:00 is allowed. In 2019 EURUSD no sweep fell in the window, so this rule changed nothing.
+6. **PW expiry.** A PW level is active for candles that open in [Mon 00:00, next Mon 00:00). A level swept before expiry keeps its 60-minute window (M-1). The previous week includes the Sunday-evening bars (A-2).
+7. **EQ formation is independent of the TF.** It is computed once on H1. For formation purposes, a cluster is "swept/dead" once any H1 bar that opens at or after its availability has a high >= level + p_min. That is the same event that starts the sweep on every confirmation TF, because every TF sees the same M1 highs. A dead cluster accepts no new members.
+8. **B-3(c) "until the old cluster is retired".** A pivot that exceeds a cluster by >= p_min swept that cluster at its own bar i. It is confirmed 3 hours later, by which time the cluster's 60-minute window has ended on every TF. So the pivot may seed or join another cluster. I count retired, consumed and expired all as "ended".
+9. **Dead-pivot check (b).** H1 highs strictly between the oldest member's bar and P's bar must be < level-including-P + p_min. With a single Q this reads "between Q and P".
+10. **Candidates for P.** These are alive clusters and unclustered single pivots. A-5 "most recent" means the candidate whose newest pivot bar is latest, with clusters and singles ranked together. A tolerance tie is inclusive (<=).
+11. **Trading days (B-3e).** A pivot's day is the UTC date of its bar's **open** (bar i), not its confirmation time. Sat and Sun count as the next Monday. The span rule is newest - oldest <= 5 ordinals. Expiry is 00:00 UTC on the day after trading day (newest + 5), and each new member extends it.
+12. **Availability of an EQ level.** The level becomes available at the close of the confirming bar of its 2nd pivot. A raised level takes effect at the raising pivot's confirmation. The level used for the state machine is the one in force when the sweep happens.
+13. **Not applied (not requested).** Data-gap unscorability, M-2 same-source tie handling, and position blocking. Rows are raw state-machine reclaims, one per level per TF.
+14. **Comparisons.** These are done in integer points (1e-5) to avoid float errors. "Exceeded by p_min" means >= L + p_min, matching 3.2 step 1.
