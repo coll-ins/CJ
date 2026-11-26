@@ -212,6 +212,12 @@ reported in the run]. Trade count is not the sample size here; independent years
 
 * Each single lookback (21/63/252) per instrument.
 * Signal without vol scaling (fixed notional), to separate trend from vol timing (Kim-Tse-Wald).
+* **Volatility-expansion split (collins, 26 Nov):** trend daily net return split by regime known at
+  the signal close: σ_5d / σ_60d > 1.25 (expanding), < 0.8 (contracting), else neutral. Also Donchian
+  20-day breakout days after the 20-day range was in its lowest quintile of the past year
+  ("squeeze breakout"), direction = breakout side. Descriptive only, outside the family; if it looks
+  useful it becomes its own pre-registered hypothesis (H005-candidate), never a filter added after
+  seeing results.
 * Results by sub-period: 2000-2010 (clean), 2011-2023, 2024-2026.
 * An equal-risk portfolio of the 6 is computed **descriptively only**, because you ruled out
   pooling. It is the version of trend following the literature actually supports; it cannot qualify
